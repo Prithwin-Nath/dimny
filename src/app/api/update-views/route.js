@@ -5,12 +5,33 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const youtubeApiKey = process.env.YOUTUBE_API_KEY;
 
+function extractVideoId(url) {
+  try {
+    const parsed = new URL(url);
+
+    // youtu.be links
+    if (parsed.hostname.includes("youtu.be")) {
+      return parsed.pathname.slice(1);
+    }
+
+    // youtube shorts links
+    if (parsed.pathname.includes("/shorts/")) {
+      return parsed.pathname.split("/shorts/")[1].split("?")[0];
+    }
+
+    // normal youtube watch links
+    return parsed.searchParams.get("v");
+  } catch {
+    return null;
+  }
+}
+
 export async function GET() {
   try {
     // CHECK ENV VARIABLES
-    if (!supabaseUrl || !supabaseKey) {
+    if (!supabaseUrl || !supabaseKey || !youtubeApiKey) {
       return NextResponse.json({
-        error: "Missing Supabase environment variables",
+        error: "Missing environment variables",
       });
     }
 
@@ -19,7 +40,7 @@ export async function GET() {
       supabaseKey
     );
 
-    // GET CLIPS
+    // GET ALL YOUTUBE CLIPS
     const { data: clips, error } = await supabase
       .from("clips")
       .select("*")
@@ -31,46 +52,40 @@ export async function GET() {
       });
     }
 
-    // EXTRACT VIDEO ID
-    function extractVideoId(url) {
-      try {
-        const parsed = new URL(url);
-
-        if (parsed.hostname.includes("youtu.be")) {
-          return parsed.pathname.slice(1);
-        }
-
-        if (parsed.pathname.includes("/shorts/")) {
-          return parsed.pathname.split("/shorts/")[1];
-        }
-
-        return parsed.searchParams.get("v");
-      } catch {
-        return null;
-      }
-    }
-
-    // UPDATE EACH CLIP
+    // LOOP THROUGH CLIPS
     for (const clip of clips) {
       const videoId = extractVideoId(clip.link);
 
-      if (!videoId) continue;
+      if (!videoId) {
+        console.log("Invalid video URL:", clip.link);
+        continue;
+      }
 
+      // FETCH YOUTUBE STATS
       const response = await fetch(
         `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=statistics&key=${youtubeApiKey}`
       );
 
       const data = await response.json();
 
-      const views =
-        data.items?.[0]?.statistics?.viewCount || 0;
+      console.log("YouTube API Response:", data);
 
+      const views =
+        Number(
+          data.items?.[0]?.statistics?.viewCount
+        ) || 0;
+
+      // UPDATE SUPABASE
       await supabase
         .from("clips")
         .update({
-          views: Number(views),
+          views: views,
         })
         .eq("id", clip.id);
+
+      console.log(
+        `Updated ${clip.link} with ${views} views`
+      );
     }
 
     return NextResponse.json({
