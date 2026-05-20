@@ -33,9 +33,17 @@ export default function AdminPage() {
     id,
     status
   ) => {
+    const updateData = {
+      status,
+    };
+
+    if (status === "payouted") {
+      updateData.payout_status = "paid";
+    }
+
     await supabase
       .from("clips")
-      .update({ status })
+      .update(updateData)
       .eq("id", id);
 
     fetchClips();
@@ -97,11 +105,17 @@ export default function AdminPage() {
   );
 
   const approvedClips = clips.filter(
-    (clip) => clip.status === "approved"
+    (clip) =>
+      clip.status === "approved" &&
+      clip.payout_status !== "paid"
   );
 
   const rejectedClips = clips.filter(
     (clip) => clip.status === "rejected"
+  );
+
+  const payoutedClips = clips.filter(
+    (clip) => clip.payout_status === "paid"
   );
 
   const renderSection = (
@@ -120,12 +134,14 @@ export default function AdminPage() {
         {data.map((clip) => {
 
           const earnings =
-            (Math.min(
-              clip.views || 0,
-              300000
-            ) /
-              1000) *
-            0.3;
+            clip.payout_status === "paid"
+              ? 0
+              : (Math.min(
+                  clip.views || 0,
+                  300000
+                ) /
+                  1000) *
+                0.3;
 
           return (
             <div
@@ -195,7 +211,8 @@ export default function AdminPage() {
                     )
                   }
                   className={`px-5 py-3 rounded-2xl font-bold ${
-                    clip.status === "approved"
+                    clip.status === "approved" &&
+                    clip.payout_status !== "paid"
                       ? "bg-green-500 text-white"
                       : "bg-green-500/20 text-green-400"
                   }`}
@@ -217,6 +234,22 @@ export default function AdminPage() {
                   }`}
                 >
                   Reject
+                </button>
+
+                <button
+                  onClick={() =>
+                    updateStatus(
+                      clip.id,
+                      "payouted"
+                    )
+                  }
+                  className={`px-5 py-3 rounded-2xl font-bold ${
+                    clip.payout_status === "paid"
+                      ? "bg-blue-500 text-white"
+                      : "bg-blue-500/20 text-blue-400"
+                  }`}
+                >
+                  Payouted
                 </button>
 
               </div>
@@ -253,6 +286,12 @@ export default function AdminPage() {
         "Rejected Clips",
         "text-red-400",
         rejectedClips
+      )}
+
+      {renderSection(
+        "Payouted Clips",
+        "text-blue-400",
+        payoutedClips
       )}
 
     </main>
