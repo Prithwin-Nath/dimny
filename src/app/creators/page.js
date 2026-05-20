@@ -122,6 +122,24 @@ export default function CreatorsPage() {
 
     if (!user) return;
 
+    // CHECK EXISTING PENDING REQUEST
+    const { data: existingRequest } = await supabase
+      .from("payout_requests")
+      .select("*")
+      .eq("user_email", user.email)
+      .eq("status", "pending");
+
+    if (
+      existingRequest &&
+      existingRequest.length > 0
+    ) {
+      showMessage(
+        "⚠️ You already have a pending payout request."
+      );
+      return;
+    }
+
+    // ONLY APPROVED CLIPS
     const approvedClips = clips.filter(
       (clip) => clip.status === "approved"
     );
@@ -157,7 +175,10 @@ export default function CreatorsPage() {
     if (!error) {
       showMessage("✅ Payout requested!");
     } else {
-      showMessage("❌ Failed to request payout.");
+      console.log(error);
+      showMessage(
+        "❌ Failed to request payout."
+      );
     }
   };
 
@@ -181,12 +202,17 @@ export default function CreatorsPage() {
     }
   };
 
-  const totalViews = clips.reduce(
+  // ONLY APPROVED CLIPS COUNT
+  const approvedClips = clips.filter(
+    (clip) => clip.status === "approved"
+  );
+
+  const totalViews = approvedClips.reduce(
     (sum, clip) => sum + (clip.views || 0),
     0
   );
 
-  const totalEarnings = clips.reduce(
+  const totalEarnings = approvedClips.reduce(
     (sum, clip) =>
       sum +
       ((Math.min(clip.views || 0, 300000) /
@@ -242,7 +268,7 @@ export default function CreatorsPage() {
 
           <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6">
             <p className="text-zinc-500 text-sm mb-2">
-              Total Views
+              Approved Views
             </p>
 
             <h2 className="text-5xl font-black text-orange-400">
@@ -252,7 +278,7 @@ export default function CreatorsPage() {
 
           <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6">
             <p className="text-zinc-500 text-sm mb-2">
-              Total Earnings
+              Available Earnings
             </p>
 
             <h2 className="text-5xl font-black text-green-400">
@@ -394,7 +420,9 @@ export default function CreatorsPage() {
                 );
 
                 const earnings =
-                  (cappedViews / 1000) * 0.3;
+                  clip.status === "approved"
+                    ? (cappedViews / 1000) * 0.3
+                    : 0;
 
                 return (
                   <motion.div
