@@ -99,6 +99,7 @@ export default function CreatorsPage() {
           status: "pending",
           user_email: user.email,
           username,
+          views: 0,
         },
       ]);
 
@@ -137,6 +138,19 @@ export default function CreatorsPage() {
         return "bg-yellow-500/20 text-yellow-300 border border-yellow-500/20";
     }
   };
+
+  // TOTAL STATS
+  const totalViews = clips.reduce(
+    (sum, clip) => sum + (clip.views || 0),
+    0
+  );
+
+  const totalEarnings = clips.reduce(
+    (sum, clip) =>
+      sum +
+      (((clip.views || 0) / 1000) * 0.3),
+    0
+  );
 
   return (
     <motion.main
@@ -232,6 +246,37 @@ export default function CreatorsPage() {
           </p>
 
         </motion.div>
+
+        {/* TOTAL STATS */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10">
+
+          {/* TOTAL VIEWS */}
+          <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6">
+
+            <p className="text-zinc-500 text-sm mb-2">
+              Total Views
+            </p>
+
+            <h2 className="text-5xl font-black text-orange-400">
+              {totalViews.toLocaleString()}
+            </h2>
+
+          </div>
+
+          {/* TOTAL EARNINGS */}
+          <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6">
+
+            <p className="text-zinc-500 text-sm mb-2">
+              Total Earnings
+            </p>
+
+            <h2 className="text-5xl font-black text-green-400">
+              ${totalEarnings.toFixed(2)}
+            </h2>
+
+          </div>
+
+        </div>
 
         {/* FORM */}
         <motion.form
@@ -419,13 +464,61 @@ export default function CreatorsPage() {
 
                   </div>
 
-                  <a
-                    href={clip.link}
-                    target="_blank"
-                    className="break-all text-zinc-300 hover:text-orange-400 transition-all duration-300"
-                  >
-                    {clip.link}
-                  </a>
+                  <div className="space-y-4">
+
+                    <a
+                      href={clip.link}
+                      target="_blank"
+                      className="break-all text-zinc-300 hover:text-orange-400 transition-all duration-300 block"
+                    >
+                      {clip.link}
+                    </a>
+
+                    {/* STATS */}
+                    <div className="flex flex-wrap items-center gap-3">
+
+                      {/* VIEWS */}
+                      <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-2xl">
+                        <p className="text-xs text-zinc-500 mb-1">
+                          Views
+                        </p>
+
+                        <p className="font-bold text-white">
+                          {clip.views || 0}
+                        </p>
+                      </div>
+
+                      {/* EARNINGS */}
+                      <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-2xl">
+                        <p className="text-xs text-zinc-500 mb-1">
+                          Earnings
+                        </p>
+
+                        <p className="font-bold text-orange-400">
+                          $
+                          {(
+                            ((clip.views || 0) / 1000) *
+                            0.3
+                          ).toFixed(2)}
+                        </p>
+                      </div>
+
+                      {/* DATE */}
+                      <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-2xl">
+                        <p className="text-xs text-zinc-500 mb-1">
+                          Submitted
+                        </p>
+
+                        <p className="font-bold text-white">
+                          {new Date(
+                            clip.created_at
+                          ).toLocaleDateString()}
+                        </p>
+                      </div>
+
+                    </div>
+
+                  </div>
 
                 </motion.div>
               ))
