@@ -11,8 +11,6 @@ export default function Navbar() {
 
   const [loggedIn, setLoggedIn] = useState(false);
 
-  const isDashboard = pathname === "/creators";
-
   useEffect(() => {
     checkUser();
   }, []);
@@ -79,23 +77,12 @@ export default function Navbar() {
             FAQ
           </Link>
 
-          {!isDashboard && (
-            <Link
-              href="/apply"
-              className="hover:text-orange-400 transition"
-            >
-              Start Clipping
-            </Link>
-          )}
-
-          {isDashboard && (
-            <Link
-              href="/creators"
-              className="hover:text-orange-400 transition text-orange-400"
-            >
-              Creator Dashboard
-            </Link>
-          )}
+          <Link
+            href="/creators"
+            className="hover:text-orange-400 transition"
+          >
+            Creator Dashboard
+          </Link>
 
         </div>
 
