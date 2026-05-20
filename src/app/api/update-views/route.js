@@ -16,10 +16,12 @@ function extractVideoId(url) {
 
     // youtube shorts links
     if (parsed.pathname.includes("/shorts/")) {
-      return parsed.pathname.split("/shorts/")[1].split("?")[0];
+      return parsed.pathname
+        .split("/shorts/")[1]
+        .split("?")[0];
     }
 
-    // normal youtube watch links
+    // normal youtube links
     return parsed.searchParams.get("v");
   } catch {
     return null;
@@ -57,34 +59,35 @@ export async function GET() {
       const videoId = extractVideoId(clip.link);
 
       if (!videoId) {
-        console.log("Invalid video URL:", clip.link);
+        console.log("Invalid URL:", clip.link);
         continue;
       }
 
-      // FETCH YOUTUBE STATS
+      // FETCH YOUTUBE DATA
       const response = await fetch(
         `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=statistics&key=${youtubeApiKey}`
       );
 
       const data = await response.json();
 
-      console.log("YouTube API Response:", data);
-
-      const views =
+      const realViews =
         Number(
           data.items?.[0]?.statistics?.viewCount
         ) || 0;
 
-      // UPDATE SUPABASE
+      // MAX 300K COUNTED
+      const cappedViews = Math.min(realViews, 300000);
+
+      // UPDATE DATABASE
       await supabase
         .from("clips")
         .update({
-          views: views,
+          views: cappedViews,
         })
         .eq("id", clip.id);
 
       console.log(
-        `Updated ${clip.link} with ${views} views`
+        `Updated ${clip.link} -> ${cappedViews} views`
       );
     }
 
