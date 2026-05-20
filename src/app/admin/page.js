@@ -1,14 +1,19 @@
-// app/admin/page.jsx
-
 "use client";
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 
 export default function AdminPage() {
+
   const [clips, setClips] = useState([]);
-  const [authorized, setAuthorized] = useState(false);
-  const [password, setPassword] = useState("");
+  const [password, setPassword] =
+    useState("");
+
+  const [authorized, setAuthorized] =
+    useState(false);
+
+  const [message, setMessage] =
+    useState("");
 
   const ADMIN_PASSWORD = "richu2105";
 
@@ -18,7 +23,24 @@ export default function AdminPage() {
     }
   }, [authorized]);
 
+  const showMessage = (text) => {
+    setMessage(text);
+
+    setTimeout(() => {
+      setMessage("");
+    }, 3000);
+  };
+
+  const login = () => {
+    if (password === ADMIN_PASSWORD) {
+      setAuthorized(true);
+    } else {
+      showMessage("Wrong password");
+    }
+  };
+
   const fetchClips = async () => {
+
     const { data } = await supabase
       .from("clips")
       .select("*")
@@ -29,127 +51,147 @@ export default function AdminPage() {
     setClips(data || []);
   };
 
-  const updateStatus = async (
-    id,
-    status
-  ) => {
-    const updateData = {
-      status,
-    };
-
-    if (status === "payouted") {
-      updateData.payout_status = "paid";
-    }
-
-    await supabase
-      .from("clips")
-      .update(updateData)
-      .eq("id", id);
-
-    fetchClips();
-  };
-
   const updateViews = async (
     id,
     views
   ) => {
-    await supabase
+
+    const { error } = await supabase
       .from("clips")
-      .update({ views })
+      .update({
+        views,
+      })
       .eq("id", id);
 
-    fetchClips();
+    if (!error) {
+
+      setClips((prev) =>
+        prev.map((clip) =>
+          clip.id === id
+            ? {
+                ...clip,
+                views,
+              }
+            : clip
+        )
+      );
+
+      showMessage("Views updated");
+    }
   };
 
-  if (!authorized) {
-    return (
-      <main className="min-h-screen bg-black text-white flex items-center justify-center px-6">
+  const updateStatus = async (
+    id,
+    status
+  ) => {
 
-        <div className="w-full max-w-md bg-white/[0.04] border border-white/10 rounded-[36px] p-8">
+    const updateData =
+      status === "payouted"
+        ? {
+            status,
+            views: 0,
+          }
+        : {
+            status,
+          };
 
-          <h1 className="text-5xl font-black mb-6 text-center">
-            Admin Access
-          </h1>
+    const { error } = await supabase
+      .from("clips")
+      .update(updateData)
+      .eq("id", id);
 
-          <input
-            type="password"
-            placeholder="Enter password"
-            value={password}
-            onChange={(e) =>
-              setPassword(e.target.value)
-            }
-            className="w-full p-4 rounded-2xl bg-black border border-white/10 outline-none mb-5"
-          />
+    if (!error) {
 
-          <button
-            onClick={() => {
-              if (
-                password === ADMIN_PASSWORD
-              ) {
-                setAuthorized(true);
+      setClips((prev) =>
+        prev.map((clip) =>
+          clip.id === id
+            ? {
+                ...clip,
+                ...updateData,
               }
-            }}
-            className="w-full bg-orange-500 py-4 rounded-2xl font-bold"
-          >
-            Enter Dashboard
-          </button>
+            : clip
+        )
+      );
 
-        </div>
+      showMessage(
+        `Clip ${status}`
+      );
+    }
+  };
 
-      </main>
-    );
-  }
+  const deleteClip = async (id) => {
 
-  const pendingClips = clips.filter(
-    (clip) => clip.status === "pending"
+    const confirmDelete =
+      window.confirm(
+        "Delete this clip?"
+      );
+
+    if (!confirmDelete) return;
+
+    const { error } = await supabase
+      .from("clips")
+      .delete()
+      .eq("id", id);
+
+    if (!error) {
+
+      setClips((prev) =>
+        prev.filter(
+          (clip) => clip.id !== id
+        )
+      );
+
+      showMessage("Clip deleted");
+    }
+  };
+
+  const pending = clips.filter(
+    (c) => c.status === "pending"
   );
 
-  const approvedClips = clips.filter(
-    (clip) =>
-      clip.status === "approved" &&
-      clip.payout_status !== "paid"
+  const approved = clips.filter(
+    (c) => c.status === "approved"
   );
 
-  const rejectedClips = clips.filter(
-    (clip) => clip.status === "rejected"
+  const rejected = clips.filter(
+    (c) => c.status === "rejected"
   );
 
-  const payoutedClips = clips.filter(
-    (clip) => clip.payout_status === "paid"
+  const payouted = clips.filter(
+    (c) => c.status === "payouted"
   );
 
   const renderSection = (
     title,
-    color,
     data
   ) => (
-    <div className="mb-20">
+    <div className="mb-16">
 
-      <h2 className={`text-4xl font-black mb-8 ${color}`}>
+      <h2 className="text-4xl font-black mb-6">
         {title}
       </h2>
 
-      <div className="space-y-6">
+      <div className="space-y-5">
 
         {data.map((clip) => {
 
+          const payableViews =
+            Math.min(
+              clip.views || 0,
+              300000
+            );
+
           const earnings =
-            clip.payout_status === "paid"
-              ? 0
-              : (Math.min(
-                  clip.views || 0,
-                  300000
-                ) /
-                  1000) *
-                0.3;
+            (payableViews / 1000) *
+            0.3;
 
           return (
             <div
               key={clip.id}
-              className="bg-white/[0.03] border border-white/10 rounded-[36px] p-8"
+              className="bg-white/5 border border-white/10 rounded-3xl p-6"
             >
 
-              <p className="text-orange-400 font-bold mb-1">
+              <p className="text-orange-400 font-bold mb-2">
                 @{clip.username}
               </p>
 
@@ -165,43 +207,50 @@ export default function AdminPage() {
                 {clip.link}
               </a>
 
-              <div className="flex flex-wrap gap-4 mb-6">
+              <div className="flex gap-4 flex-wrap mb-6">
 
                 <div className="bg-black/40 p-4 rounded-2xl">
 
-                  <p className="text-zinc-500 text-xs">
+                  <p className="text-xs text-zinc-500">
                     Views
                   </p>
 
                   <input
                     type="number"
-                    defaultValue={clip.views || 0}
+                    defaultValue={
+                      clip.views || 0
+                    }
                     onBlur={(e) =>
                       updateViews(
                         clip.id,
-                        Number(e.target.value)
+                        Number(
+                          e.target.value
+                        )
                       )
                     }
-                    className="bg-transparent outline-none text-white font-bold"
+                    className="bg-transparent outline-none font-bold"
                   />
 
                 </div>
 
                 <div className="bg-black/40 p-4 rounded-2xl">
 
-                  <p className="text-zinc-500 text-xs">
+                  <p className="text-xs text-zinc-500">
                     Earnings
                   </p>
 
                   <p className="font-bold text-green-400">
-                    ${earnings.toFixed(2)}
+                    $
+                    {earnings.toFixed(
+                      2
+                    )}
                   </p>
 
                 </div>
 
               </div>
 
-              <div className="flex gap-3 flex-wrap">
+              <div className="flex flex-wrap gap-3">
 
                 <button
                   onClick={() =>
@@ -210,9 +259,9 @@ export default function AdminPage() {
                       "approved"
                     )
                   }
-                  className={`px-5 py-3 rounded-2xl font-bold ${
-                    clip.status === "approved" &&
-                    clip.payout_status !== "paid"
+                  className={`px-5 py-3 rounded-2xl font-bold transition ${
+                    clip.status ===
+                    "approved"
                       ? "bg-green-500 text-white"
                       : "bg-green-500/20 text-green-400"
                   }`}
@@ -227,8 +276,9 @@ export default function AdminPage() {
                       "rejected"
                     )
                   }
-                  className={`px-5 py-3 rounded-2xl font-bold ${
-                    clip.status === "rejected"
+                  className={`px-5 py-3 rounded-2xl font-bold transition ${
+                    clip.status ===
+                    "rejected"
                       ? "bg-red-500 text-white"
                       : "bg-red-500/20 text-red-400"
                   }`}
@@ -243,13 +293,25 @@ export default function AdminPage() {
                       "payouted"
                     )
                   }
-                  className={`px-5 py-3 rounded-2xl font-bold ${
-                    clip.payout_status === "paid"
+                  className={`px-5 py-3 rounded-2xl font-bold transition ${
+                    clip.status ===
+                    "payouted"
                       ? "bg-blue-500 text-white"
                       : "bg-blue-500/20 text-blue-400"
                   }`}
                 >
                   Payouted
+                </button>
+
+                <button
+                  onClick={() =>
+                    deleteClip(
+                      clip.id
+                    )
+                  }
+                  className="bg-white/10 border border-white/10 px-5 py-3 rounded-2xl"
+                >
+                  Delete
                 </button>
 
               </div>
@@ -263,35 +325,72 @@ export default function AdminPage() {
     </div>
   );
 
+  if (!authorized) {
+    return (
+      <main className="min-h-screen bg-black text-white flex items-center justify-center px-6">
+
+        <div className="w-full max-w-md bg-white/5 p-8 rounded-3xl border border-white/10">
+
+          <h1 className="text-5xl font-black mb-6 text-center">
+            Admin Access
+          </h1>
+
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) =>
+              setPassword(
+                e.target.value
+              )
+            }
+            className="w-full p-4 rounded-2xl bg-black border border-white/10 mb-5"
+          />
+
+          <button
+            onClick={login}
+            className="w-full bg-orange-500 py-4 rounded-2xl font-bold"
+          >
+            Enter Dashboard
+          </button>
+
+        </div>
+
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-black text-white px-6 py-12">
 
-      <h1 className="text-6xl font-black mb-16">
+      {message && (
+        <div className="fixed top-5 right-5 bg-white/10 px-5 py-3 rounded-2xl z-50">
+          {message}
+        </div>
+      )}
+
+      <h1 className="text-6xl font-black mb-14">
         Admin Dashboard
       </h1>
 
       {renderSection(
         "Pending Clips",
-        "text-yellow-400",
-        pendingClips
+        pending
       )}
 
       {renderSection(
         "Approved Clips",
-        "text-green-400",
-        approvedClips
+        approved
       )}
 
       {renderSection(
         "Rejected Clips",
-        "text-red-400",
-        rejectedClips
+        rejected
       )}
 
       {renderSection(
         "Payouted Clips",
-        "text-blue-400",
-        payoutedClips
+        payouted
       )}
 
     </main>
