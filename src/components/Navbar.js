@@ -96,7 +96,7 @@ export default function Navbar() {
         {loggedIn ? (
           <button
             onClick={handleLogout}
-            className="bg-gradient-to-r from-orange-400 to-orange-600 px-8 py-4 rounded-2xl font-bold hover:scale-105 transition-all duration-300 shadow-xl shadow-orange-500/20"
+            className="bg-black border border-white/10 px-8 py-4 rounded-2xl font-bold hover:bg-white/10 hover:scale-105 transition-all duration-300"
           >
             Logout
           </button>
