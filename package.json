@@ -28,7 +28,7 @@
   "crons": [
     {
       "path": "/api/update-views",
-      "schedule": "0 * * * *"
+      "schedule": "*/30 * * * *"
     }
   ]
 }

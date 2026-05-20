@@ -8,7 +8,7 @@ const supabase = createClient(
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
-// EXTRACT YOUTUBE VIDEO ID
+// EXTRACT VIDEO ID
 function extractVideoId(url) {
   try {
     const parsed = new URL(url);
@@ -18,7 +18,12 @@ function extractVideoId(url) {
       return parsed.pathname.slice(1);
     }
 
-    // youtube.com/watch?v=
+    // youtube shorts
+    if (parsed.pathname.includes("/shorts/")) {
+      return parsed.pathname.split("/shorts/")[1];
+    }
+
+    // normal youtube links
     return parsed.searchParams.get("v");
   } catch {
     return null;
@@ -39,13 +44,13 @@ export async function GET() {
       });
     }
 
-    // LOOP THROUGH CLIPS
+    // LOOP THROUGH EACH CLIP
     for (const clip of clips) {
       const videoId = extractVideoId(clip.link);
 
       if (!videoId) continue;
 
-      // FETCH YOUTUBE DATA
+      // FETCH YOUTUBE STATS
       const response = await fetch(
         `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=statistics&key=${YOUTUBE_API_KEY}`
       );
@@ -55,11 +60,12 @@ export async function GET() {
       const views =
         data.items?.[0]?.statistics?.viewCount || 0;
 
-      // UPDATE DATABASE
+      // UPDATE SUPABASE
       await supabase
         .from("clips")
         .update({
           views: Number(views),
+          status: "approved",
         })
         .eq("id", clip.id);
     }
