@@ -5,6 +5,8 @@ import { supabase } from "../../lib/supabase";
 
 export default function AdminPage() {
   const [clips, setClips] = useState([]);
+  const [payouts, setPayouts] = useState([]);
+
   const [loading, setLoading] = useState(false);
 
   const [authorized, setAuthorized] = useState(false);
@@ -27,7 +29,9 @@ export default function AdminPage() {
   const checkPassword = async () => {
     if (password === ADMIN_PASSWORD) {
       setAuthorized(true);
+
       fetchClips();
+      fetchPayouts();
     } else {
       showMessage("❌ Wrong password.");
     }
@@ -44,11 +48,41 @@ export default function AdminPage() {
 
     if (!error) {
       setClips(data || []);
-    } else {
-      console.log(error);
     }
 
     setLoading(false);
+  };
+
+  // FETCH PAYOUTS
+  const fetchPayouts = async () => {
+    const { data, error } = await supabase
+      .from("payout_requests")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!error) {
+      setPayouts(data || []);
+    }
+  };
+
+  // UPDATE PAYOUT STATUS
+  const updatePayoutStatus = async (id, status) => {
+    const { error } = await supabase
+      .from("payout_requests")
+      .update({ status })
+      .eq("id", id);
+
+    if (!error) {
+      setPayouts((prev) =>
+        prev.map((payout) =>
+          payout.id === id
+            ? { ...payout, status }
+            : payout
+        )
+      );
+
+      showMessage(`✅ Payout ${status}`);
+    }
   };
 
   // UPDATE STATUS
@@ -67,15 +101,7 @@ export default function AdminPage() {
         )
       );
 
-      if (status === "approved") {
-        showMessage("✅ Clip approved.");
-      }
-
-      if (status === "rejected") {
-        showMessage("❌ Clip rejected.");
-      }
-    } else {
-      console.log(error);
+      showMessage(`✅ Clip ${status}`);
     }
   };
 
@@ -96,8 +122,6 @@ export default function AdminPage() {
       );
 
       showMessage("👀 Views updated.");
-    } else {
-      console.log(error);
     }
   };
 
@@ -114,9 +138,6 @@ export default function AdminPage() {
       );
 
       showMessage("🗑 Clip deleted.");
-    } else {
-      console.log(error);
-      showMessage("❌ Failed to delete.");
     }
   };
 
@@ -155,76 +176,22 @@ export default function AdminPage() {
     0
   );
 
-  // $0.30 PER 1K VIEWS
-  const totalPayouts = clips
-    .filter((clip) => clip.status === "approved")
-    .reduce(
-      (sum, clip) =>
-        sum +
-        (((clip.views || 0) / 1000) * 0.3),
-      0
-    );
-
-  const topCreator = Object.entries(
-    clips.reduce((acc, clip) => {
-      const user = clip.username || "Unknown";
-
-      acc[user] =
-        (acc[user] || 0) +
-        (clip.views || 0);
-
-      return acc;
-    }, {})
-  ).sort((a, b) => b[1] - a[1])[0];
+  const totalPayouts = payouts.reduce(
+    (sum, payout) =>
+      sum + (payout.amount || 0),
+    0
+  );
 
   // LOGIN SCREEN
   if (!authorized) {
     return (
-      <main className="min-h-screen bg-black text-white flex items-center justify-center px-6 relative overflow-hidden">
+      <main className="min-h-screen bg-black text-white flex items-center justify-center px-6">
 
-        <div className="absolute top-[-150px] left-[-150px] w-[500px] h-[500px] bg-orange-500/20 blur-[140px] rounded-full" />
+        <div className="w-full max-w-md bg-white/[0.04] border border-white/10 rounded-[36px] p-8">
 
-        {message && (
-          <div className="fixed top-10 left-1/2 -translate-x-1/2 z-50">
-
-            <div className="bg-zinc-900/95 border border-white/10 backdrop-blur-2xl rounded-3xl px-6 py-4 flex items-center gap-4 shadow-2xl">
-
-              <div className="w-12 h-12 rounded-2xl bg-orange-500/20 flex items-center justify-center text-orange-400 text-xl">
-                ✦
-              </div>
-
-              <div>
-                <p className="font-bold">
-                  DIMNY
-                </p>
-
-                <p className="text-sm text-zinc-400">
-                  {message}
-                </p>
-              </div>
-
-            </div>
-
-          </div>
-        )}
-
-        <div className="relative z-10 w-full max-w-md bg-white/[0.04] border border-white/10 rounded-[36px] p-8 backdrop-blur-2xl shadow-2xl">
-
-          <div className="text-center mb-10">
-
-            <div className="w-20 h-20 rounded-[28px] bg-gradient-to-br from-orange-400 to-orange-600 mx-auto flex items-center justify-center text-3xl font-black shadow-xl shadow-orange-500/20 mb-6">
-              A
-            </div>
-
-            <h1 className="text-5xl font-black mb-3">
-              Admin Access
-            </h1>
-
-            <p className="text-zinc-400">
-              Enter your admin password
-            </p>
-
-          </div>
+          <h1 className="text-5xl font-black mb-6 text-center">
+            Admin Access
+          </h1>
 
           <input
             type="password"
@@ -238,12 +205,12 @@ export default function AdminPage() {
                 checkPassword();
               }
             }}
-            className="w-full p-4 rounded-2xl bg-black border border-white/10 outline-none focus:border-orange-500 transition-all duration-300 mb-5"
+            className="w-full p-4 rounded-2xl bg-black border border-white/10 outline-none mb-5"
           />
 
           <button
             onClick={checkPassword}
-            className="w-full bg-gradient-to-r from-orange-400 to-orange-600 py-4 rounded-2xl font-bold text-lg hover:scale-[1.02] active:scale-100 transition-all duration-300 shadow-xl shadow-orange-500/20"
+            className="w-full bg-orange-500 py-4 rounded-2xl font-bold"
           >
             Enter Dashboard
           </button>
@@ -255,118 +222,52 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black text-white px-6 lg:px-12 py-12 overflow-x-hidden relative">
+    <main className="min-h-screen bg-black text-white px-6 py-12">
 
-      {/* BG */}
-      <div className="absolute top-[-200px] left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-orange-500/10 blur-[140px] rounded-full pointer-events-none" />
-
-      {/* TOAST */}
-      {message && (
-        <div className="fixed top-10 left-1/2 -translate-x-1/2 z-50">
-
-          <div className="bg-zinc-900/95 border border-white/10 backdrop-blur-2xl rounded-3xl px-6 py-4 flex items-center gap-4 shadow-2xl">
-
-            <div className="w-12 h-12 rounded-2xl bg-orange-500/20 flex items-center justify-center text-orange-400 text-xl">
-              ✦
-            </div>
-
-            <div>
-              <p className="font-bold">
-                DIMNY
-              </p>
-
-              <p className="text-sm text-zinc-400">
-                {message}
-              </p>
-            </div>
-
-          </div>
-
-        </div>
-      )}
-
-      {/* HEADER */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-12 relative z-10">
-
-        <div>
-
-          <h1 className="text-6xl font-black mb-3">
-            Admin Dashboard
-          </h1>
-
-          <p className="text-zinc-400 text-lg">
-            Moderate creator submissions
-          </p>
-
-        </div>
-
-        <button
-          onClick={fetchClips}
-          className="bg-white/5 border border-white/10 px-5 py-3 rounded-2xl hover:bg-white/10 hover:scale-105 transition-all duration-300"
-        >
-          Refresh
-        </button>
-
-      </div>
+      <h1 className="text-6xl font-black mb-10">
+        Admin Dashboard
+      </h1>
 
       {/* STATS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-5 mb-12 relative z-10">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-5 mb-14">
 
-        <div className="bg-white/[0.03] border border-white/10 rounded-[28px] p-6">
-          <p className="text-zinc-500 text-sm mb-2">
-            Total Clips
-          </p>
-
+        <div className="bg-white/5 p-6 rounded-3xl">
+          <p>Total Clips</p>
           <h2 className="text-4xl font-black">
             {total}
           </h2>
         </div>
 
-        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-[28px] p-6">
-          <p className="text-yellow-200/70 text-sm mb-2">
-            Pending
-          </p>
-
+        <div className="bg-yellow-500/10 p-6 rounded-3xl">
+          <p>Pending</p>
           <h2 className="text-4xl font-black text-yellow-400">
             {pending}
           </h2>
         </div>
 
-        <div className="bg-green-500/10 border border-green-500/20 rounded-[28px] p-6">
-          <p className="text-green-200/70 text-sm mb-2">
-            Approved
-          </p>
-
+        <div className="bg-green-500/10 p-6 rounded-3xl">
+          <p>Approved</p>
           <h2 className="text-4xl font-black text-green-400">
             {approved}
           </h2>
         </div>
 
-        <div className="bg-red-500/10 border border-red-500/20 rounded-[28px] p-6">
-          <p className="text-red-200/70 text-sm mb-2">
-            Rejected
-          </p>
-
+        <div className="bg-red-500/10 p-6 rounded-3xl">
+          <p>Rejected</p>
           <h2 className="text-4xl font-black text-red-400">
             {rejected}
           </h2>
         </div>
 
-        <div className="bg-orange-500/10 border border-orange-500/20 rounded-[28px] p-6">
-          <p className="text-orange-200/70 text-sm mb-2">
-            Total Views
-          </p>
-
+        <div className="bg-orange-500/10 p-6 rounded-3xl">
+          <p>Total Views</p>
           <h2 className="text-4xl font-black text-orange-400">
             {totalViews.toLocaleString()}
           </h2>
         </div>
 
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-[28px] p-6">
-          <p className="text-blue-200/70 text-sm mb-2">
-            Total Payouts
-          </p>
-
+        <div className="bg-blue-500/10 p-6 rounded-3xl">
+          <p>Total Requested</p>
           <h2 className="text-4xl font-black text-blue-400">
             ${totalPayouts.toFixed(2)}
           </h2>
@@ -374,121 +275,152 @@ export default function AdminPage() {
 
       </div>
 
-      {/* TOP CREATOR */}
-      {topCreator && (
-        <div className="mb-10 bg-gradient-to-r from-orange-500/10 to-orange-400/5 border border-orange-500/20 rounded-[32px] p-8 relative z-10">
+      {/* PAYOUT REQUESTS */}
+      <div className="mb-16">
 
-          <p className="text-orange-300 text-sm mb-2">
-            Top Creator
-          </p>
+        <h2 className="text-4xl font-black mb-6">
+          Payout Requests
+        </h2>
 
-          <h2 className="text-5xl font-black text-orange-400 mb-2">
-            @{topCreator[0]}
-          </h2>
+        <div className="space-y-5">
 
-          <p className="text-zinc-400 text-lg">
-            {topCreator[1].toLocaleString()} total views
-          </p>
+          {payouts.map((payout) => (
+            <div
+              key={payout.id}
+              className="bg-white/[0.03] border border-white/10 rounded-3xl p-6"
+            >
+
+              <p className="text-orange-400 font-bold mb-2">
+                {payout.user_email}
+              </p>
+
+              <p className="text-5xl font-black mb-4">
+                ${payout.amount}
+              </p>
+
+              <p className="text-zinc-500 mb-6">
+                {payout.status}
+              </p>
+
+              <div className="flex gap-3">
+
+                <button
+                  onClick={() =>
+                    updatePayoutStatus(
+                      payout.id,
+                      "approved"
+                    )
+                  }
+                  className="bg-green-500/20 text-green-400 px-5 py-3 rounded-2xl"
+                >
+                  Approve
+                </button>
+
+                <button
+                  onClick={() =>
+                    updatePayoutStatus(
+                      payout.id,
+                      "rejected"
+                    )
+                  }
+                  className="bg-red-500/20 text-red-400 px-5 py-3 rounded-2xl"
+                >
+                  Reject
+                </button>
+
+              </div>
+
+            </div>
+          ))}
 
         </div>
-      )}
+
+      </div>
 
       {/* CLIPS */}
-      <div className="flex flex-col gap-8 relative z-10">
+      <div className="space-y-8">
 
         {clips.map((clip) => {
 
+          const payableViews = Math.min(
+            clip.views || 0,
+            300000
+          );
+
           const earnings =
-            ((clip.views || 0) / 1000) * 0.3;
+            (payableViews / 1000) * 0.3;
 
           return (
-
             <div
               key={clip.id}
-              className="bg-white/[0.03] border border-white/10 rounded-[36px] p-8 backdrop-blur-xl shadow-2xl"
+              className="bg-white/[0.03] border border-white/10 rounded-[36px] p-8"
             >
 
-              <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
+              <div className="flex flex-col gap-6">
 
-                {/* INFO */}
-                <div className="flex-1">
+                <div>
 
-                  <div className="flex items-center gap-3 flex-wrap mb-4">
-
-                    <span className="px-4 py-1 rounded-full bg-orange-500/20 text-orange-400 text-xs uppercase tracking-widest">
-                      {clip.platform}
-                    </span>
-
-                    <span
-                      className={`px-4 py-1 rounded-full text-xs font-bold tracking-wide backdrop-blur-xl ${statusStyle(
-                        clip.status
-                      )}`}
-                    >
-                      {clip.status}
-                    </span>
-
-                  </div>
-
-                  <p className="text-orange-400 font-bold mb-2">
+                  <p className="text-orange-400 font-bold">
                     @{clip.username}
                   </p>
 
-                  <p className="text-zinc-500 text-sm mb-4">
+                  <p className="text-zinc-500 text-sm mb-3">
                     {clip.user_email}
                   </p>
 
                   <a
                     href={clip.link}
                     target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-lg break-all hover:text-orange-400 transition"
+                    className="break-all"
                   >
                     {clip.link}
                   </a>
 
-                  {/* ANALYTICS */}
-                  <div className="flex flex-wrap gap-4 mt-6">
+                </div>
 
-                    {/* VIEWS */}
-                    <div className="bg-black/40 border border-white/10 px-5 py-4 rounded-2xl">
+                <div className="flex flex-wrap gap-4">
 
-                      <p className="text-zinc-500 text-xs mb-1">
-                        Views
-                      </p>
+                  <div className="bg-black/40 p-4 rounded-2xl">
+                    <p className="text-zinc-500 text-xs">
+                      Views
+                    </p>
 
-                      <input
-                        type="number"
-                        defaultValue={clip.views || 0}
-                        onBlur={(e) =>
-                          updateViews(
-                            clip.id,
-                            Number(e.target.value)
-                          )
-                        }
-                        className="w-32 bg-transparent outline-none text-white font-bold"
-                      />
+                    <input
+                      type="number"
+                      defaultValue={clip.views || 0}
+                      onBlur={(e) =>
+                        updateViews(
+                          clip.id,
+                          Number(e.target.value)
+                        )
+                      }
+                      className="bg-transparent outline-none text-white font-bold"
+                    />
+                  </div>
 
-                    </div>
+                  <div className="bg-black/40 p-4 rounded-2xl">
+                    <p className="text-zinc-500 text-xs">
+                      Payable Views
+                    </p>
 
-                    {/* EARNINGS */}
-                    <div className="bg-black/40 border border-white/10 px-5 py-4 rounded-2xl">
+                    <p className="font-bold text-orange-400">
+                      {payableViews.toLocaleString()}
+                    </p>
+                  </div>
 
-                      <p className="text-zinc-500 text-xs mb-1">
-                        Earnings
-                      </p>
+                  <div className="bg-black/40 p-4 rounded-2xl">
+                    <p className="text-zinc-500 text-xs">
+                      Earnings
+                    </p>
 
-                      <p className="text-green-400 font-bold">
-                        ${earnings.toFixed(2)}
-                      </p>
-
-                    </div>
-
+                    <p className="font-bold text-green-400">
+                      ${earnings.toFixed(2)}
+                    </p>
                   </div>
 
                 </div>
 
-                {/* ACTIONS */}
-                <div className="flex flex-wrap gap-3">
+                <div className="flex gap-3 flex-wrap">
 
                   <button
                     onClick={() =>
@@ -497,7 +429,7 @@ export default function AdminPage() {
                         "approved"
                       )
                     }
-                    className="bg-green-500/20 text-green-400 border border-green-500/20 px-5 py-3 rounded-2xl hover:bg-green-500/30 hover:scale-105 transition-all duration-300"
+                    className="bg-green-500/20 text-green-400 px-5 py-3 rounded-2xl"
                   >
                     Approve
                   </button>
@@ -509,7 +441,7 @@ export default function AdminPage() {
                         "rejected"
                       )
                     }
-                    className="bg-red-500/20 text-red-400 border border-red-500/20 px-5 py-3 rounded-2xl hover:bg-red-500/30 hover:scale-105 transition-all duration-300"
+                    className="bg-red-500/20 text-red-400 px-5 py-3 rounded-2xl"
                   >
                     Reject
                   </button>
@@ -518,7 +450,7 @@ export default function AdminPage() {
                     onClick={() =>
                       deleteClip(clip.id)
                     }
-                    className="bg-white/5 border border-white/10 px-5 py-3 rounded-2xl hover:bg-white/10 hover:scale-105 transition-all duration-300"
+                    className="bg-white/5 border border-white/10 px-5 py-3 rounded-2xl"
                   >
                     Delete
                   </button>

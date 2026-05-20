@@ -117,6 +117,55 @@ export default function CreatorsPage() {
     setLoading(false);
   };
 
+  // REQUEST PAYOUT
+  const requestPayout = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    // ONLY APPROVED CLIPS COUNT
+    const approvedClips = clips.filter(
+      (clip) => clip.status === "approved"
+    );
+
+    // MAX 300K VIEWS PER VIDEO
+    const payoutViews = approvedClips.reduce(
+      (sum, clip) =>
+        sum + Math.min(clip.views || 0, 300000),
+      0
+    );
+
+    const payoutAmount =
+      (payoutViews / 1000) * 0.3;
+
+    if (payoutAmount <= 0) {
+      showMessage("⚠️ No payout available yet.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("payout_requests")
+      .insert([
+        {
+          user_email: user.email,
+          username:
+            user.user_metadata?.username ||
+            "Unknown",
+          amount: payoutAmount,
+          total_views: payoutViews,
+          status: "pending",
+        },
+      ]);
+
+    if (!error) {
+      showMessage("✅ Payout requested!");
+    } else {
+      showMessage("❌ Failed to request payout.");
+    }
+  };
+
   // PLATFORM STYLE
   const platformStyle = (type) =>
     `flex-1 py-4 rounded-2xl border transition-all duration-300 font-semibold ${
@@ -145,10 +194,13 @@ export default function CreatorsPage() {
     0
   );
 
+  // ONLY COUNT 300K MAX PER VIDEO
   const totalEarnings = clips.reduce(
     (sum, clip) =>
       sum +
-      (((clip.views || 0) / 1000) * 0.3),
+      ((Math.min(clip.views || 0, 300000) /
+        1000) *
+        0.3),
     0
   );
 
@@ -168,7 +220,7 @@ export default function CreatorsPage() {
       className="min-h-screen bg-black text-white overflow-hidden relative"
     >
 
-      {/* BACKGROUND GLOW */}
+      {/* BACKGROUND */}
       <div className="absolute top-[-250px] left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-orange-500/10 blur-[140px] rounded-full pointer-events-none" />
 
       <Navbar />
@@ -222,20 +274,7 @@ export default function CreatorsPage() {
       <div className="relative z-10 max-w-5xl mx-auto px-6 py-20">
 
         {/* HEADER */}
-        <motion.div
-          initial={{
-            opacity: 0,
-            y: 20,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            delay: 0.1,
-          }}
-          className="mb-14"
-        >
+        <div className="mb-14">
 
           <h1 className="text-5xl lg:text-6xl font-black mb-4">
             Creator Dashboard
@@ -245,7 +284,7 @@ export default function CreatorsPage() {
             Submit and manage your clips.
           </p>
 
-        </motion.div>
+        </div>
 
         {/* TOTAL STATS */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10">
@@ -274,23 +313,28 @@ export default function CreatorsPage() {
               ${totalEarnings.toFixed(2)}
             </h2>
 
+            <p className="text-xs text-zinc-500 mt-2">
+              Max 300K views counted per video
+            </p>
+
           </div>
 
         </div>
 
+        {/* PAYOUT BUTTON */}
+        <div className="mb-10">
+
+          <button
+            onClick={requestPayout}
+            className="bg-gradient-to-r from-green-400 to-green-600 px-8 py-4 rounded-2xl font-bold text-lg shadow-xl"
+          >
+            Request Payout
+          </button>
+
+        </div>
+
         {/* FORM */}
-        <motion.form
-          initial={{
-            opacity: 0,
-            y: 25,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            delay: 0.2,
-          }}
+        <form
           onSubmit={handleSubmit}
           className="bg-white/[0.03] border border-white/10 rounded-[32px] p-8 backdrop-blur-xl shadow-2xl"
         >
@@ -367,166 +411,27 @@ export default function CreatorsPage() {
                   })
                 }
                 required
-                className="w-full p-5 rounded-2xl bg-black border border-white/10 outline-none focus:border-orange-500 focus:shadow-[0_0_25px_rgba(255,140,0,0.15)] transition-all duration-300"
+                className="w-full p-5 rounded-2xl bg-black border border-white/10 outline-none"
               />
 
             </div>
 
             {/* BUTTON */}
-            <motion.button
-              whileHover={{
-                scale: 1.02,
-              }}
-              whileTap={{
-                scale: 0.98,
-              }}
+            <button
               type="submit"
               disabled={loading}
-              className="bg-gradient-to-r from-orange-400 to-orange-600 py-4 rounded-2xl font-bold text-lg transition-all duration-300 disabled:opacity-50 shadow-xl shadow-orange-500/20"
+              className="bg-gradient-to-r from-orange-400 to-orange-600 py-4 rounded-2xl font-bold text-lg"
             >
 
               {loading
                 ? "Submitting..."
                 : "Submit Clip"}
 
-            </motion.button>
+            </button>
 
           </div>
 
-        </motion.form>
-
-        {/* CLIPS */}
-        <motion.div
-          initial={{
-            opacity: 0,
-          }}
-          animate={{
-            opacity: 1,
-          }}
-          transition={{
-            delay: 0.3,
-          }}
-          className="mt-16"
-        >
-
-          <div className="flex items-center justify-between mb-8">
-
-            <h2 className="text-3xl font-black">
-              Submitted Clips
-            </h2>
-
-            <div className="bg-orange-500/10 border border-orange-500/20 px-4 py-2 rounded-2xl text-orange-400 font-semibold">
-              {clips.length} Clips
-            </div>
-
-          </div>
-
-          <div className="space-y-5">
-
-            {clips.length === 0 ? (
-              <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-10 text-center text-zinc-500">
-                No clips submitted yet.
-              </div>
-            ) : (
-              clips.map((clip, index) => (
-                <motion.div
-                  key={clip.id}
-                  initial={{
-                    opacity: 0,
-                    y: 20,
-                  }}
-                  animate={{
-                    opacity: 1,
-                    y: 0,
-                  }}
-                  transition={{
-                    delay: index * 0.05,
-                  }}
-                  whileHover={{
-                    scale: 1.01,
-                  }}
-                  className="bg-white/[0.03] border border-white/10 rounded-3xl p-6 hover:border-orange-500/20 transition-all duration-300"
-                >
-
-                  <div className="flex items-center gap-3 mb-5">
-
-                    <span className="bg-orange-500/20 text-orange-400 px-4 py-1 rounded-full text-sm uppercase font-semibold border border-orange-500/10">
-                      {clip.platform}
-                    </span>
-
-                    <span
-                      className={`px-4 py-1 rounded-full text-sm capitalize font-semibold ${statusStyle(
-                        clip.status
-                      )}`}
-                    >
-                      {clip.status}
-                    </span>
-
-                  </div>
-
-                  <div className="space-y-4">
-
-                    <a
-                      href={clip.link}
-                      target="_blank"
-                      className="break-all text-zinc-300 hover:text-orange-400 transition-all duration-300 block"
-                    >
-                      {clip.link}
-                    </a>
-
-                    {/* STATS */}
-                    <div className="flex flex-wrap items-center gap-3">
-
-                      {/* VIEWS */}
-                      <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-2xl">
-                        <p className="text-xs text-zinc-500 mb-1">
-                          Views
-                        </p>
-
-                        <p className="font-bold text-white">
-                          {clip.views || 0}
-                        </p>
-                      </div>
-
-                      {/* EARNINGS */}
-                      <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-2xl">
-                        <p className="text-xs text-zinc-500 mb-1">
-                          Earnings
-                        </p>
-
-                        <p className="font-bold text-orange-400">
-                          $
-                          {(
-                            ((clip.views || 0) / 1000) *
-                            0.3
-                          ).toFixed(2)}
-                        </p>
-                      </div>
-
-                      {/* DATE */}
-                      <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-2xl">
-                        <p className="text-xs text-zinc-500 mb-1">
-                          Submitted
-                        </p>
-
-                        <p className="font-bold text-white">
-                          {new Date(
-                            clip.created_at
-                          ).toLocaleDateString()}
-                        </p>
-                      </div>
-
-                    </div>
-
-                  </div>
-
-                </motion.div>
-              ))
-            )}
-
-          </div>
-
-        </motion.div>
+        </form>
 
       </div>
 
