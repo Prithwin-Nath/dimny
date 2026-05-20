@@ -77,6 +77,13 @@ export default function Navbar() {
           </Link>
 
           <Link
+            href="/payments"
+            className="hover:text-orange-400 transition"
+          >
+            Payments
+          </Link>
+
+          <Link
             href="/creators"
             className="hover:text-orange-400 transition"
           >
