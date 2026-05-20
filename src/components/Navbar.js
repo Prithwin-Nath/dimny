@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function Navbar() {
-  const pathname = usePathname();
   const router = useRouter();
 
   const [loggedIn, setLoggedIn] = useState(false);
@@ -86,7 +85,7 @@ export default function Navbar() {
 
         </div>
 
-        {/* AUTH BUTTON */}
+        {/* LOGIN / LOGOUT */}
         {loggedIn ? (
           <button
             onClick={handleLogout}
