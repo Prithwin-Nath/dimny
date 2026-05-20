@@ -1,20 +1,59 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import Navbar from "../../components/Navbar";
 import { supabase } from "../../lib/supabase";
 
-export default function AdminPage() {
-  const [clips, setClips] = useState([]);
-  const [payouts, setPayouts] = useState([]);
+export default function CreatorsPage() {
+  const router = useRouter();
+
+  const [form, setForm] = useState({
+    link: "",
+    platform: "youtube",
+  });
 
   const [loading, setLoading] = useState(false);
-
-  const [authorized, setAuthorized] = useState(false);
-  const [password, setPassword] = useState("");
-
+  const [clips, setClips] = useState([]);
   const [message, setMessage] = useState("");
 
-  const ADMIN_PASSWORD = "richu2105";
+  useEffect(() => {
+    checkUser();
+  }, []);
+
+  const checkUser = async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      router.push("/auth");
+      return;
+    }
+
+    fetchClips();
+  };
+
+  const fetchClips = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("clips")
+      .select("*")
+      .eq("user_email", user.email)
+      .order("created_at", {
+        ascending: false,
+      });
+
+    if (!error) {
+      setClips(data || []);
+    }
+  };
 
   const showMessage = (text) => {
     setMessage(text);
@@ -24,485 +63,453 @@ export default function AdminPage() {
     }, 3000);
   };
 
-  const checkPassword = async () => {
-    if (password === ADMIN_PASSWORD) {
-      setAuthorized(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-      fetchClips();
-      fetchPayouts();
-    } else {
-      showMessage("❌ Wrong password.");
-    }
-  };
-
-  const fetchClips = async () => {
     setLoading(true);
 
-    const { data, error } = await supabase
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    const username =
+      user.user_metadata?.username || "Unknown";
+
+    const { data: existing } = await supabase
       .from("clips")
       .select("*")
-      .order("created_at", { ascending: false });
+      .eq("link", form.link);
+
+    if (existing && existing.length > 0) {
+      showMessage("⚠️ Clip already submitted.");
+      setLoading(false);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("clips")
+      .insert([
+        {
+          link: form.link,
+          platform: form.platform,
+          status: "pending",
+          user_email: user.email,
+          username,
+          views: 0,
+        },
+      ]);
 
     if (!error) {
-      setClips(data || []);
+      showMessage("✅ Clip submitted!");
+
+      setForm({
+        link: "",
+        platform: "youtube",
+      });
+
+      fetchClips();
     }
 
     setLoading(false);
   };
 
-  const fetchPayouts = async () => {
-    const { data, error } = await supabase
-      .from("payout_requests")
-      .select("*")
-      .order("created_at", { ascending: false });
+  const platformStyle = (type) =>
+    `flex-1 py-4 rounded-2xl border transition-all duration-300 font-semibold ${
+      form.platform === type
+        ? "bg-gradient-to-r from-orange-400 to-orange-600 text-white border-orange-500"
+        : "bg-black border-white/10 hover:bg-white/10"
+    }`;
 
-    if (!error) {
-      setPayouts(data || []);
+  const statusStyle = (status) => {
+    switch (status) {
+      case "approved":
+        return "bg-green-500/20 text-green-400 border border-green-500/20";
+
+      case "rejected":
+        return "bg-red-500/20 text-red-400 border border-red-500/20";
+
+      default:
+        return "bg-yellow-500/20 text-yellow-300 border border-yellow-500/20";
     }
   };
 
-  // UPDATE PAYOUT STATUS
-  const updatePayoutStatus = async (
-    payout,
-    status
-  ) => {
-    const { error } = await supabase
-      .from("payout_requests")
-      .update({ status })
-      .eq("id", payout.id);
-
-    if (!error) {
-
-      // IF PAID -> RESET CLIP VIEWS
-      if (status === "paid") {
-
-        const userClips = clips.filter(
-          (clip) =>
-            clip.user_email === payout.user_email &&
-            clip.status === "approved"
-        );
-
-        for (const clip of userClips) {
-          await supabase
-            .from("clips")
-            .update({
-              views: 0,
-            })
-            .eq("id", clip.id);
-        }
-
-        fetchClips();
-      }
-
-      fetchPayouts();
-
-      showMessage(`✅ Payout ${status}`);
-    }
-  };
-
-  // UPDATE CLIP STATUS
-  const updateStatus = async (
-    id,
-    status
-  ) => {
-    const { error } = await supabase
-      .from("clips")
-      .update({ status })
-      .eq("id", id);
-
-    if (!error) {
-      setClips((prev) =>
-        prev.map((clip) =>
-          clip.id === id
-            ? { ...clip, status }
-            : clip
-        )
-      );
-
-      showMessage(`✅ Clip ${status}`);
-    }
-  };
-
-  // UPDATE VIEWS
-  const updateViews = async (
-    id,
-    views
-  ) => {
-    const { error } = await supabase
-      .from("clips")
-      .update({ views })
-      .eq("id", id);
-
-    if (!error) {
-      setClips((prev) =>
-        prev.map((clip) =>
-          clip.id === id
-            ? { ...clip, views }
-            : clip
-        )
-      );
-
-      showMessage("👀 Views updated.");
-    }
-  };
-
-  // DELETE CLIP
-  const deleteClip = async (id) => {
-    const { error } = await supabase
-      .from("clips")
-      .delete()
-      .eq("id", id);
-
-    if (!error) {
-      setClips((prev) =>
-        prev.filter(
-          (clip) => clip.id !== id
-        )
-      );
-
-      showMessage("🗑 Clip deleted.");
-    }
-  };
-
-  const total = clips.length;
-
-  const pending = clips.filter(
-    (clip) => clip.status === "pending"
-  ).length;
-
-  const approved = clips.filter(
+  // APPROVED ONLY FOR TOP STATS
+  const approvedOnly = clips.filter(
     (clip) => clip.status === "approved"
-  ).length;
+  );
 
-  const rejected = clips.filter(
-    (clip) => clip.status === "rejected"
-  ).length;
+  const totalViews = approvedOnly.reduce(
+    (sum, clip) => sum + (clip.views || 0),
+    0
+  );
 
-  const totalViews = clips.reduce(
+  const totalEarnings = approvedOnly.reduce(
     (sum, clip) =>
-      sum + (clip.views || 0),
+      sum +
+      ((Math.min(clip.views || 0, 300000) /
+        1000) *
+        0.3),
     0
   );
 
-  const totalPayouts = payouts.reduce(
-    (sum, payout) =>
-      sum + (payout.amount || 0),
-    0
+  // SECTIONS
+  const pendingClips = clips.filter(
+    (clip) => clip.status === "pending"
   );
 
-  if (!authorized) {
+  const approvedClips = clips.filter(
+    (clip) => clip.status === "approved"
+  );
+
+  const rejectedClips = clips.filter(
+    (clip) => clip.status === "rejected"
+  );
+
+  // CARD
+  const renderClipCard = (
+    clip,
+    index
+  ) => {
+
+    const cappedViews = Math.min(
+      clip.views || 0,
+      300000
+    );
+
+    const earnings =
+      (cappedViews / 1000) * 0.3;
+
     return (
-      <main className="min-h-screen bg-black text-white flex items-center justify-center px-6">
+      <motion.div
+        key={clip.id}
+        initial={{
+          opacity: 0,
+          y: 20,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          delay: index * 0.05,
+        }}
+        className="bg-white/[0.03] border border-white/10 rounded-3xl p-6"
+      >
 
-        <div className="w-full max-w-md bg-white/[0.04] border border-white/10 rounded-[36px] p-8">
+        <div className="flex items-center gap-3 mb-5">
 
-          <h1 className="text-5xl font-black mb-6 text-center">
-            Admin Access
-          </h1>
+          <span className="bg-orange-500/20 text-orange-400 px-4 py-1 rounded-full text-sm uppercase font-semibold">
+            {clip.platform}
+          </span>
 
-          <input
-            type="password"
-            placeholder="Enter password"
-            value={password}
-            onChange={(e) =>
-              setPassword(e.target.value)
-            }
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                checkPassword();
-              }
-            }}
-            className="w-full p-4 rounded-2xl bg-black border border-white/10 outline-none mb-5"
-          />
-
-          <button
-            onClick={checkPassword}
-            className="w-full bg-orange-500 py-4 rounded-2xl font-bold"
+          <span
+            className={`px-4 py-1 rounded-full text-sm capitalize font-semibold ${statusStyle(
+              clip.status
+            )}`}
           >
-            Enter Dashboard
-          </button>
+            {clip.status}
+          </span>
 
         </div>
 
-      </main>
+        <a
+          href={clip.link}
+          target="_blank"
+          className="break-all text-zinc-300 hover:text-orange-400 block mb-5"
+        >
+          {clip.link}
+        </a>
+
+        <div className="flex flex-wrap gap-3">
+
+          <div className="bg-white/5 border border-white/10 px-5 py-3 rounded-2xl min-w-[140px]">
+
+            <p className="text-xs text-zinc-500 mb-1">
+              Views
+            </p>
+
+            <p className="font-black text-2xl text-white">
+              {(clip.views || 0).toLocaleString()}
+            </p>
+
+          </div>
+
+          <div className="bg-white/5 border border-white/10 px-5 py-3 rounded-2xl min-w-[140px]">
+
+            <p className="text-xs text-zinc-500 mb-1">
+              Earnings
+            </p>
+
+            <p className="font-black text-2xl text-green-400">
+              ${earnings.toFixed(2)}
+            </p>
+
+          </div>
+
+        </div>
+
+      </motion.div>
     );
-  }
+  };
 
   return (
-    <main className="min-h-screen bg-black text-white px-6 py-12">
+    <main className="min-h-screen bg-black text-white overflow-hidden relative">
 
-      {message && (
-        <div className="fixed top-5 right-5 bg-zinc-900 border border-white/10 px-6 py-4 rounded-2xl z-50">
-          {message}
-        </div>
-      )}
+      {/* BG */}
 
-      <h1 className="text-6xl font-black mb-10">
-        Admin Dashboard
-      </h1>
+      <div className="absolute top-[-250px] left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-orange-500/10 blur-[140px] rounded-full pointer-events-none" />
 
-      {/* STATS */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-5 mb-14">
+      <Navbar />
 
-        <div className="bg-white/5 p-6 rounded-3xl">
-          <p>Total Clips</p>
-          <h2 className="text-4xl font-black">
-            {total}
-          </h2>
-        </div>
+      {/* TOAST */}
 
-        <div className="bg-yellow-500/10 p-6 rounded-3xl">
-          <p>Pending</p>
-          <h2 className="text-4xl font-black text-yellow-400">
-            {pending}
-          </h2>
-        </div>
+      <AnimatePresence>
+        {message && (
+          <motion.div
+            initial={{
+              opacity: 0,
+              y: -20,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            exit={{
+              opacity: 0,
+              y: -20,
+            }}
+            className="fixed top-24 left-1/2 -translate-x-1/2 z-50"
+          >
+            <div className="bg-zinc-900 border border-white/10 rounded-3xl px-6 py-4">
+              {message}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-        <div className="bg-green-500/10 p-6 rounded-3xl">
-          <p>Approved</p>
-          <h2 className="text-4xl font-black text-green-400">
-            {approved}
-          </h2>
-        </div>
+      <div className="relative z-10 max-w-5xl mx-auto px-6 py-20">
 
-        <div className="bg-red-500/10 p-6 rounded-3xl">
-          <p>Rejected</p>
-          <h2 className="text-4xl font-black text-red-400">
-            {rejected}
-          </h2>
-        </div>
+        {/* HEADER */}
 
-        <div className="bg-orange-500/10 p-6 rounded-3xl">
-          <p>Total Views</p>
-          <h2 className="text-4xl font-black text-orange-400">
-            {totalViews.toLocaleString()}
-          </h2>
-        </div>
+        <div className="mb-14">
 
-        <div className="bg-blue-500/10 p-6 rounded-3xl">
-          <p>Total Requested</p>
-          <h2 className="text-4xl font-black text-blue-400">
-            ${totalPayouts.toFixed(2)}
-          </h2>
+          <h1 className="text-5xl lg:text-6xl font-black mb-4">
+            Creator Dashboard
+          </h1>
+
+          <p className="text-zinc-400 text-lg">
+            Submit and manage your clips.
+          </p>
+
         </div>
 
-      </div>
+        {/* TOP STATS */}
 
-      {/* PAYOUT REQUESTS */}
-      <div className="mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10">
 
-        <h2 className="text-4xl font-black mb-6">
-          Payout Requests
-        </h2>
+          <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6">
 
-        <div className="space-y-5">
+            <p className="text-zinc-500 text-sm mb-2">
+              Approved Views
+            </p>
 
-          {payouts.map((payout) => (
-            <div
-              key={payout.id}
-              className="bg-white/[0.03] border border-white/10 rounded-3xl p-6"
-            >
+            <h2 className="text-5xl font-black text-orange-400">
+              {totalViews.toLocaleString()}
+            </h2>
 
-              <p className="text-orange-400 font-bold mb-2">
-                @{payout.username}
+          </div>
+
+          <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6">
+
+            <p className="text-zinc-500 text-sm mb-2">
+              Approved Earnings
+            </p>
+
+            <h2 className="text-5xl font-black text-green-400">
+              ${totalEarnings.toFixed(2)}
+            </h2>
+
+          </div>
+
+        </div>
+
+        {/* DISCORD BUTTON */}
+
+        <div className="mb-10">
+
+          <a
+            href="https://discord.gg/XePVKRtf5"
+            target="_blank"
+            className="inline-block bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-4 rounded-2xl font-bold text-lg"
+          >
+            Open Discord Ticket
+          </a>
+
+        </div>
+
+        {/* FORM */}
+
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white/[0.03] border border-white/10 rounded-[32px] p-8"
+        >
+
+          <div className="flex flex-col gap-8">
+
+            <div>
+
+              <p className="mb-4 text-zinc-400">
+                Select Platform
               </p>
 
-              <p className="text-zinc-400 mb-2">
-                {payout.user_email}
-              </p>
-
-              <p className="text-5xl font-black mb-4 text-green-400">
-                ${payout.amount}
-              </p>
-
-              <p className="text-zinc-500 mb-6 capitalize">
-                Status: {payout.status}
-              </p>
-
-              <div className="flex gap-3 flex-wrap">
+              <div className="grid grid-cols-3 gap-3">
 
                 <button
+                  type="button"
                   onClick={() =>
-                    updatePayoutStatus(
-                      payout,
-                      "approved"
-                    )
+                    setForm({
+                      ...form,
+                      platform: "youtube",
+                    })
                   }
-                  className={`px-5 py-3 rounded-2xl font-semibold ${
-                    payout.status === "approved"
-                      ? "bg-green-500 text-white"
-                      : "bg-green-500/20 text-green-400"
-                  }`}
+                  className={platformStyle("youtube")}
                 >
-                  Approve
+                  YouTube
                 </button>
 
                 <button
+                  type="button"
                   onClick={() =>
-                    updatePayoutStatus(
-                      payout,
-                      "rejected"
-                    )
+                    setForm({
+                      ...form,
+                      platform: "tiktok",
+                    })
                   }
-                  className={`px-5 py-3 rounded-2xl font-semibold ${
-                    payout.status === "rejected"
-                      ? "bg-red-500 text-white"
-                      : "bg-red-500/20 text-red-400"
-                  }`}
+                  className={platformStyle("tiktok")}
                 >
-                  Reject
+                  TikTok
                 </button>
 
                 <button
+                  type="button"
                   onClick={() =>
-                    updatePayoutStatus(
-                      payout,
-                      "paid"
-                    )
+                    setForm({
+                      ...form,
+                      platform: "instagram",
+                    })
                   }
-                  className={`px-5 py-3 rounded-2xl font-semibold ${
-                    payout.status === "paid"
-                      ? "bg-blue-500 text-white"
-                      : "bg-blue-500/20 text-blue-400"
-                  }`}
+                  className={platformStyle("instagram")}
                 >
-                  Mark Paid
+                  Instagram
                 </button>
 
               </div>
 
             </div>
-          ))}
+
+            <div>
+
+              <p className="mb-4 text-zinc-400">
+                Video Link
+              </p>
+
+              <input
+                type="url"
+                placeholder="Paste your clip..."
+                value={form.link}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    link: e.target.value,
+                  })
+                }
+                required
+                className="w-full p-5 rounded-2xl bg-black border border-white/10 outline-none"
+              />
+
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-gradient-to-r from-orange-400 to-orange-600 py-4 rounded-2xl font-bold text-lg"
+            >
+              {loading
+                ? "Submitting..."
+                : "Submit Clip"}
+            </button>
+
+          </div>
+
+        </form>
+
+        {/* PENDING */}
+
+        <div className="mt-20 mb-16">
+
+          <h2 className="text-3xl font-black mb-6 text-yellow-400">
+            Pending Clips
+          </h2>
+
+          <div className="space-y-5">
+
+            {pendingClips.length === 0 ? (
+              <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-10 text-center text-zinc-500">
+                No pending clips.
+              </div>
+            ) : (
+              pendingClips.map(renderClipCard)
+            )}
+
+          </div>
 
         </div>
 
-      </div>
+        {/* APPROVED */}
 
-      {/* CLIPS */}
-      <div className="space-y-8">
+        <div className="mb-16">
 
-        {clips.map((clip) => {
+          <h2 className="text-3xl font-black mb-6 text-green-400">
+            Approved Clips
+          </h2>
 
-          const payableViews = Math.min(
-            clip.views || 0,
-            300000
-          );
+          <div className="space-y-5">
 
-          const earnings =
-            clip.status === "approved"
-              ? (payableViews / 1000) * 0.3
-              : 0;
-
-          return (
-            <div
-              key={clip.id}
-              className="bg-white/[0.03] border border-white/10 rounded-[36px] p-8"
-            >
-
-              <div className="flex flex-col gap-6">
-
-                <div>
-
-                  <p className="text-orange-400 font-bold">
-                    @{clip.username}
-                  </p>
-
-                  <p className="text-zinc-500 text-sm mb-3">
-                    {clip.user_email}
-                  </p>
-
-                  <a
-                    href={clip.link}
-                    target="_blank"
-                    className="break-all"
-                  >
-                    {clip.link}
-                  </a>
-
-                </div>
-
-                <div className="flex flex-wrap gap-4">
-
-                  <div className="bg-black/40 p-4 rounded-2xl">
-                    <p className="text-zinc-500 text-xs">
-                      Views
-                    </p>
-
-                    <input
-                      type="number"
-                      defaultValue={clip.views || 0}
-                      onBlur={(e) =>
-                        updateViews(
-                          clip.id,
-                          Number(e.target.value)
-                        )
-                      }
-                      className="bg-transparent outline-none text-white font-bold"
-                    />
-                  </div>
-
-                  <div className="bg-black/40 p-4 rounded-2xl">
-                    <p className="text-zinc-500 text-xs">
-                      Earnings
-                    </p>
-
-                    <p className="font-bold text-green-400">
-                      ${earnings.toFixed(2)}
-                    </p>
-                  </div>
-
-                </div>
-
-                <div className="flex gap-3 flex-wrap">
-
-                  <button
-                    onClick={() =>
-                      updateStatus(
-                        clip.id,
-                        "approved"
-                      )
-                    }
-                    className={`px-5 py-3 rounded-2xl font-semibold ${
-                      clip.status === "approved"
-                        ? "bg-green-500 text-white"
-                        : "bg-green-500/20 text-green-400"
-                    }`}
-                  >
-                    Approve
-                  </button>
-
-                  <button
-                    onClick={() =>
-                      updateStatus(
-                        clip.id,
-                        "rejected"
-                      )
-                    }
-                    className={`px-5 py-3 rounded-2xl font-semibold ${
-                      clip.status === "rejected"
-                        ? "bg-red-500 text-white"
-                        : "bg-red-500/20 text-red-400"
-                    }`}
-                  >
-                    Reject
-                  </button>
-
-                  <button
-                    onClick={() =>
-                      deleteClip(clip.id)
-                    }
-                    className="bg-white/5 border border-white/10 px-5 py-3 rounded-2xl"
-                  >
-                    Delete
-                  </button>
-
-                </div>
-
+            {approvedClips.length === 0 ? (
+              <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-10 text-center text-zinc-500">
+                No approved clips.
               </div>
+            ) : (
+              approvedClips.map(renderClipCard)
+            )}
 
-            </div>
-          );
-        })}
+          </div>
+
+        </div>
+
+        {/* REJECTED */}
+
+        <div>
+
+          <h2 className="text-3xl font-black mb-6 text-red-400">
+            Rejected Clips
+          </h2>
+
+          <div className="space-y-5">
+
+            {rejectedClips.length === 0 ? (
+              <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-10 text-center text-zinc-500">
+                No rejected clips.
+              </div>
+            ) : (
+              rejectedClips.map(renderClipCard)
+            )}
+
+          </div>
+
+        </div>
 
       </div>
 

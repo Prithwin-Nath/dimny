@@ -115,75 +115,6 @@ export default function CreatorsPage() {
     setLoading(false);
   };
 
-  const requestPayout = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) return;
-
-    const { data: existingRequest } = await supabase
-      .from("payout_requests")
-      .select("*")
-      .eq("user_email", user.email)
-      .eq("status", "pending");
-
-    if (
-      existingRequest &&
-      existingRequest.length > 0
-    ) {
-      showMessage(
-        "⚠️ You already have a pending payout request."
-      );
-      return;
-    }
-
-    const approvedClips = clips.filter(
-      (clip) => clip.status === "approved"
-    );
-
-    const payoutViews = approvedClips.reduce(
-      (sum, clip) =>
-        sum + Math.min(clip.views || 0, 300000),
-      0
-    );
-
-    const payoutAmount =
-      (payoutViews / 1000) * 0.3;
-
-    if (payoutAmount <= 0) {
-      showMessage("⚠️ No payout available yet.");
-      return;
-    }
-
-    const { error } = await supabase
-      .from("payout_requests")
-      .insert([
-        {
-          user_email: user.email,
-          username:
-            user.user_metadata?.username ||
-            "Unknown",
-          amount: payoutAmount,
-          total_views: payoutViews,
-          status: "pending",
-        },
-      ]);
-
-    if (!error) {
-      showMessage(
-        `✅ Payout request sent for $${payoutAmount.toFixed(
-          2
-        )}`
-      );
-    } else {
-      console.log(error);
-      showMessage(
-        "❌ Failed to request payout."
-      );
-    }
-  };
-
   const platformStyle = (type) =>
     `flex-1 py-4 rounded-2xl border transition-all duration-300 font-semibold ${
       form.platform === type
@@ -203,25 +134,6 @@ export default function CreatorsPage() {
         return "bg-yellow-500/20 text-yellow-300 border border-yellow-500/20";
     }
   };
-
-  // ONLY APPROVED CLIPS COUNT
-  const approvedClips = clips.filter(
-    (clip) => clip.status === "approved"
-  );
-
-  const totalViews = approvedClips.reduce(
-    (sum, clip) => sum + (clip.views || 0),
-    0
-  );
-
-  const totalEarnings = approvedClips.reduce(
-    (sum, clip) =>
-      sum +
-      ((Math.min(clip.views || 0, 300000) /
-        1000) *
-        0.3),
-    0
-  );
 
   return (
     <main className="min-h-screen bg-black text-white overflow-hidden relative">
@@ -266,38 +178,19 @@ export default function CreatorsPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10">
-
-          <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6">
-            <p className="text-zinc-500 text-sm mb-2">
-              Approved Views
-            </p>
-
-            <h2 className="text-5xl font-black text-orange-400">
-              {totalViews.toLocaleString()}
-            </h2>
-          </div>
-
-          <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6">
-            <p className="text-zinc-500 text-sm mb-2">
-              Available Balance
-            </p>
-
-            <h2 className="text-5xl font-black text-green-400">
-              ${totalEarnings.toFixed(2)}
-            </h2>
-          </div>
-
-        </div>
+        {/* DISCORD BUTTON */}
 
         <div className="mb-10">
-          <button
-            onClick={requestPayout}
-            className="bg-gradient-to-r from-green-400 to-green-600 px-8 py-4 rounded-2xl font-bold text-lg hover:scale-105 transition"
+          <a
+            href="https://discord.gg/XePVKRtf5"
+            target="_blank"
+            className="inline-block bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-4 rounded-2xl font-bold text-lg hover:scale-105 transition-all duration-300"
           >
-            Request Payout
-          </button>
+            Open Discord Payout Ticket
+          </a>
         </div>
+
+        {/* SUBMIT FORM */}
 
         <form
           onSubmit={handleSubmit}
@@ -393,6 +286,8 @@ export default function CreatorsPage() {
 
         </form>
 
+        {/* CLIPS */}
+
         <div className="mt-16">
 
           <div className="flex items-center justify-between mb-8">
@@ -421,7 +316,7 @@ export default function CreatorsPage() {
                   300000
                 );
 
-                // SHOW MONEY FOR ALL CLIPS
+                // MONEY ALWAYS VISIBLE
                 const earnings =
                   (cappedViews / 1000) * 0.3;
 
@@ -461,31 +356,37 @@ export default function CreatorsPage() {
                     <a
                       href={clip.link}
                       target="_blank"
-                      className="break-all text-zinc-300 hover:text-orange-400 block mb-4"
+                      className="break-all text-zinc-300 hover:text-orange-400 block mb-5"
                     >
                       {clip.link}
                     </a>
 
+                    {/* VIEWS + MONEY */}
+
                     <div className="flex flex-wrap gap-3">
 
-                      <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-2xl">
+                      <div className="bg-white/5 border border-white/10 px-5 py-3 rounded-2xl min-w-[140px]">
+
                         <p className="text-xs text-zinc-500 mb-1">
                           Views
                         </p>
 
-                        <p className="font-bold text-white">
+                        <p className="font-black text-2xl text-white">
                           {(clip.views || 0).toLocaleString()}
                         </p>
+
                       </div>
 
-                      <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-2xl">
+                      <div className="bg-white/5 border border-white/10 px-5 py-3 rounded-2xl min-w-[140px]">
+
                         <p className="text-xs text-zinc-500 mb-1">
-                          Earnings
+                          Estimated Earnings
                         </p>
 
-                        <p className="font-bold text-green-400">
+                        <p className="font-black text-2xl text-green-400">
                           ${earnings.toFixed(2)}
                         </p>
+
                       </div>
 
                     </div>
