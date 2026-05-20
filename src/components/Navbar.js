@@ -50,10 +50,10 @@ export default function Navbar() {
           </Link>
 
           <Link
-            href="/payments"
+            href="/creators"
             className="hover:text-orange-400 transition"
           >
-            Payments
+            Creator Dashboard
           </Link>
 
           <Link
