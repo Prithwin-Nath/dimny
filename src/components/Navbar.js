@@ -1,11 +1,41 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function Navbar() {
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const [loggedIn, setLoggedIn] = useState(false);
+
+  const isDashboard = pathname === "/creators";
+
+  useEffect(() => {
+    checkUser();
+  }, []);
+
+  const checkUser = async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    setLoggedIn(!!session);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+
+    setLoggedIn(false);
+
+    router.push("/auth");
+  };
+
   return (
     <nav className="w-full border-b border-white/10 bg-black/80 backdrop-blur-xl sticky top-0 z-50">
-      
+
       <div className="max-w-7xl mx-auto px-6 lg:px-12 h-24 flex items-center justify-between">
 
         {/* LOGO */}
@@ -13,11 +43,13 @@ export default function Navbar() {
           href="/"
           className="flex items-center gap-3"
         >
+
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-2xl font-black shadow-xl shadow-orange-500/30">
             D
           </div>
 
           <div>
+
             <h1 className="text-4xl font-black leading-none">
               DIMNY
             </h1>
@@ -25,7 +57,9 @@ export default function Navbar() {
             <p className="text-zinc-500 text-sm">
               Creator Platform
             </p>
+
           </div>
+
         </Link>
 
         {/* NAV LINKS */}
@@ -45,29 +79,42 @@ export default function Navbar() {
             FAQ
           </Link>
 
-          <Link
-            href="/creators"
-            className="hover:text-orange-400 transition"
-          >
-            Creator Dashboard
-          </Link>
+          {!isDashboard && (
+            <Link
+              href="/apply"
+              className="hover:text-orange-400 transition"
+            >
+              Start Clipping
+            </Link>
+          )}
 
-          <Link
-            href="/apply"
-            className="hover:text-orange-400 transition"
-          >
-            Start Clipping
-          </Link>
+          {isDashboard && (
+            <Link
+              href="/creators"
+              className="hover:text-orange-400 transition text-orange-400"
+            >
+              Creator Dashboard
+            </Link>
+          )}
 
         </div>
 
-        {/* LOGIN BUTTON */}
-        <Link
-          href="/auth"
-          className="bg-gradient-to-r from-orange-400 to-orange-600 px-8 py-4 rounded-2xl font-bold hover:scale-105 transition-all duration-300 shadow-xl shadow-orange-500/20"
-        >
-          Login
-        </Link>
+        {/* RIGHT BUTTON */}
+        {loggedIn ? (
+          <button
+            onClick={handleLogout}
+            className="bg-gradient-to-r from-orange-400 to-orange-600 px-8 py-4 rounded-2xl font-bold hover:scale-105 transition-all duration-300 shadow-xl shadow-orange-500/20"
+          >
+            Logout
+          </button>
+        ) : (
+          <Link
+            href="/auth"
+            className="bg-gradient-to-r from-orange-400 to-orange-600 px-8 py-4 rounded-2xl font-bold hover:scale-105 transition-all duration-300 shadow-xl shadow-orange-500/20"
+          >
+            Login
+          </Link>
+        )}
 
       </div>
 
