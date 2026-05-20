@@ -1,31 +1,59 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-export async function GET() {
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+const YOUTUBE_API_KEY =
+  process.env.YOUTUBE_API_KEY;
+
+function extractVideoId(url) {
+
   try {
-    const supabaseUrl =
-      process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-    const supabaseKey =
-      process.env.SUPABASE_SERVICE_ROLE_KEY;
+    // shorts
+    if (url.includes("/shorts/")) {
+      return url
+        .split("/shorts/")[1]
+        ?.split("?")[0];
+    }
 
-    const youtubeKey =
-      process.env.YOUTUBE_API_KEY;
+    // watch?v=
+    if (url.includes("watch?v=")) {
+      return url
+        .split("watch?v=")[1]
+        ?.split("&")[0];
+    }
+
+    // youtu.be
+    if (url.includes("youtu.be/")) {
+      return url
+        .split("youtu.be/")[1]
+        ?.split("?")[0];
+    }
+
+    return null;
+
+  } catch {
+    return null;
+  }
+}
+
+export async function GET() {
+
+  try {
 
     if (
-      !supabaseUrl ||
-      !supabaseKey ||
-      !youtubeKey
+      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      !process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      !YOUTUBE_API_KEY
     ) {
       return NextResponse.json({
         error: "Missing environment variables",
       });
     }
-
-    const supabase = createClient(
-      supabaseUrl,
-      supabaseKey
-    );
 
     const { data: clips, error } =
       await supabase
@@ -39,32 +67,25 @@ export async function GET() {
       });
     }
 
+    let updated = 0;
+
     for (const clip of clips) {
+
       try {
-        let videoId = null;
 
-        if (
-          clip.link.includes("/shorts/")
-        ) {
-          videoId =
+        const videoId =
+          extractVideoId(clip.link);
+
+        if (!videoId) {
+          console.log(
+            "Invalid video ID:",
             clip.link
-              .split("/shorts/")[1]
-              ?.split("?")[0];
+          );
+          continue;
         }
-
-        if (
-          clip.link.includes("watch?v=")
-        ) {
-          videoId =
-            clip.link
-              .split("watch?v=")[1]
-              ?.split("&")[0];
-        }
-
-        if (!videoId) continue;
 
         const response = await fetch(
-          `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=statistics&key=${youtubeKey}`
+          `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=statistics&key=${YOUTUBE_API_KEY}`
         );
 
         const data =
@@ -73,8 +94,13 @@ export async function GET() {
         if (
           !data.items ||
           !data.items[0]
-        )
+        ) {
+          console.log(
+            "No data for:",
+            videoId
+          );
           continue;
+        }
 
         const views = Number(
           data.items[0].statistics
@@ -83,9 +109,15 @@ export async function GET() {
 
         await supabase
           .from("clips")
-          .update({ views })
+          .update({
+            views,
+          })
           .eq("id", clip.id);
+
+        updated++;
+
       } catch (err) {
+
         console.log(
           "Clip update failed:",
           err
@@ -95,8 +127,11 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
+      updated,
     });
+
   } catch (err) {
+
     return NextResponse.json({
       error: err.message,
     });
