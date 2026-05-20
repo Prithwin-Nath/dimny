@@ -99,7 +99,7 @@ export default function Navbar() {
 
         </div>
 
-        {/* RIGHT BUTTON */}
+        {/* AUTH BUTTON */}
         {loggedIn ? (
           <button
             onClick={handleLogout}
