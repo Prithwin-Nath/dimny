@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
 export default function AuthPage() {
@@ -17,7 +17,7 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // AUTO LOGIN
+  // CHECK SESSION
   useEffect(() => {
     checkSession();
   }, []);
@@ -32,7 +32,7 @@ export default function AuthPage() {
     }
   };
 
-  // TOAST
+  // MESSAGE
   const showMessage = (text) => {
     setMessage(text);
 
@@ -56,7 +56,6 @@ export default function AuthPage() {
         });
 
       if (error) {
-        console.log(error);
         showMessage(error.message);
       } else {
         showMessage("✅ Logged in!");
@@ -69,21 +68,21 @@ export default function AuthPage() {
 
     // SIGNUP
     else {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            username: username,
+      const { error } =
+        await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              username,
+            },
           },
-        },
-      });
+        });
 
       if (error) {
-        console.log(error);
         showMessage(error.message);
       } else {
-        showMessage("✅ Account created!");
+        showMessage("✅ Account created! Check your email.");
 
         setTimeout(() => {
           router.push("/creators");
@@ -98,17 +97,11 @@ export default function AuthPage() {
     <motion.main
       initial={{
         opacity: 0,
-        scale: 0.98,
       }}
       animate={{
         opacity: 1,
-        scale: 1,
       }}
-      transition={{
-        duration: 0.5,
-        ease: "easeInOut",
-      }}
-      className="min-h-screen bg-black text-white flex items-center justify-center px-6 overflow-hidden relative"
+      className="min-h-screen bg-black text-white flex items-center justify-center px-6 relative overflow-hidden"
     >
 
       {/* BACKGROUND */}
@@ -117,30 +110,30 @@ export default function AuthPage() {
         <motion.div
           animate={{
             x: [0, 40, 0],
-            y: [0, -30, 0],
+            y: [0, -40, 0],
           }}
           transition={{
             duration: 10,
             repeat: Infinity,
           }}
-          className="absolute w-[500px] h-[500px] bg-orange-500/20 blur-[120px] rounded-full top-[-100px] left-[-100px]"
+          className="absolute top-[-100px] left-[-100px] w-[500px] h-[500px] rounded-full bg-orange-500/20 blur-[120px]"
         />
 
         <motion.div
           animate={{
             x: [0, -40, 0],
-            y: [0, 30, 0],
+            y: [0, 40, 0],
           }}
           transition={{
             duration: 12,
             repeat: Infinity,
           }}
-          className="absolute w-[400px] h-[400px] bg-orange-400/10 blur-[120px] rounded-full bottom-[-100px] right-[-100px]"
+          className="absolute bottom-[-100px] right-[-100px] w-[400px] h-[400px] rounded-full bg-orange-400/10 blur-[120px]"
         />
 
       </div>
 
-      {/* TOAST */}
+      {/* MESSAGE */}
       <AnimatePresence>
 
         {message && (
@@ -148,37 +141,20 @@ export default function AuthPage() {
             initial={{
               opacity: 0,
               y: -20,
-              scale: 0.9,
             }}
             animate={{
               opacity: 1,
               y: 0,
-              scale: 1,
             }}
             exit={{
               opacity: 0,
               y: -20,
-              scale: 0.9,
             }}
             className="fixed top-10 left-1/2 -translate-x-1/2 z-50"
           >
 
-            <div className="bg-zinc-900/95 border border-white/10 backdrop-blur-2xl rounded-3xl px-6 py-4 flex items-center gap-4 shadow-2xl">
-
-              <div className="w-12 h-12 rounded-2xl bg-orange-500/20 flex items-center justify-center text-orange-400 text-xl">
-                ✦
-              </div>
-
-              <div>
-                <p className="font-bold">
-                  DIMNY
-                </p>
-
-                <p className="text-sm text-zinc-400">
-                  {message}
-                </p>
-              </div>
-
+            <div className="bg-zinc-900 border border-white/10 rounded-3xl px-6 py-4 shadow-2xl backdrop-blur-xl">
+              {message}
             </div>
 
           </motion.div>
@@ -190,43 +166,21 @@ export default function AuthPage() {
       <motion.div
         initial={{
           opacity: 0,
-          y: 40,
+          y: 30,
         }}
         animate={{
           opacity: 1,
           y: 0,
         }}
-        transition={{
-          delay: 0.2,
-        }}
         className="relative z-10 w-full max-w-md bg-white/[0.04] border border-white/10 rounded-[36px] p-8 backdrop-blur-2xl shadow-2xl"
       >
 
-        {/* HEADER */}
-        <motion.div
-          initial={{
-            opacity: 0,
-            y: 20,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            delay: 0.3,
-          }}
-          className="mb-10 text-center"
-        >
+        {/* LOGO */}
+        <div className="text-center mb-10">
 
-          <motion.div
-            whileHover={{
-              scale: 1.05,
-              rotate: 3,
-            }}
-            className="w-20 h-20 rounded-[28px] bg-gradient-to-br from-orange-400 to-orange-600 mx-auto flex items-center justify-center text-3xl font-black shadow-xl shadow-orange-500/20 mb-6"
-          >
+          <div className="w-20 h-20 rounded-[28px] bg-gradient-to-br from-orange-400 to-orange-600 mx-auto flex items-center justify-center text-3xl font-black shadow-xl shadow-orange-500/20 mb-6">
             D
-          </motion.div>
+          </div>
 
           <h1 className="text-5xl font-black mb-3">
             {isLogin
@@ -240,7 +194,7 @@ export default function AuthPage() {
               : "Join the DIMNY creator platform"}
           </p>
 
-        </motion.div>
+        </div>
 
         {/* FORM */}
         <form
@@ -279,7 +233,7 @@ export default function AuthPage() {
                     setUsername(e.target.value)
                   }
                   required={!isLogin}
-                  className="w-full p-4 rounded-2xl bg-black border border-white/10 outline-none focus:border-orange-500 focus:shadow-[0_0_25px_rgba(255,140,0,0.15)] transition-all duration-300"
+                  className="w-full p-4 rounded-2xl bg-black border border-white/10 outline-none focus:border-orange-500 transition-all"
                 />
 
               </motion.div>
@@ -288,11 +242,7 @@ export default function AuthPage() {
           </AnimatePresence>
 
           {/* EMAIL */}
-          <motion.div
-            whileFocus={{
-              scale: 1.01,
-            }}
-          >
+          <div>
 
             <p className="text-sm text-zinc-400 mb-3">
               Email
@@ -306,17 +256,13 @@ export default function AuthPage() {
                 setEmail(e.target.value)
               }
               required
-              className="w-full p-4 rounded-2xl bg-black border border-white/10 outline-none focus:border-orange-500 focus:shadow-[0_0_25px_rgba(255,140,0,0.15)] transition-all duration-300"
+              className="w-full p-4 rounded-2xl bg-black border border-white/10 outline-none focus:border-orange-500 transition-all"
             />
 
-          </motion.div>
+          </div>
 
           {/* PASSWORD */}
-          <motion.div
-            whileFocus={{
-              scale: 1.01,
-            }}
-          >
+          <div>
 
             <p className="text-sm text-zinc-400 mb-3">
               Password
@@ -330,10 +276,10 @@ export default function AuthPage() {
                 setPassword(e.target.value)
               }
               required
-              className="w-full p-4 rounded-2xl bg-black border border-white/10 outline-none focus:border-orange-500 focus:shadow-[0_0_25px_rgba(255,140,0,0.15)] transition-all duration-300"
+              className="w-full p-4 rounded-2xl bg-black border border-white/10 outline-none focus:border-orange-500 transition-all"
             />
 
-          </motion.div>
+          </div>
 
           {/* BUTTON */}
           <motion.button
@@ -345,7 +291,7 @@ export default function AuthPage() {
             }}
             type="submit"
             disabled={loading}
-            className="mt-3 bg-gradient-to-r from-orange-400 to-orange-600 py-4 rounded-2xl font-bold text-lg transition-all duration-300 disabled:opacity-50 shadow-xl shadow-orange-500/20"
+            className="mt-3 bg-gradient-to-r from-orange-400 to-orange-600 py-4 rounded-2xl font-bold text-lg shadow-xl shadow-orange-500/20"
           >
 
             {loading
@@ -359,18 +305,7 @@ export default function AuthPage() {
         </form>
 
         {/* SWITCH */}
-        <motion.div
-          initial={{
-            opacity: 0,
-          }}
-          animate={{
-            opacity: 1,
-          }}
-          transition={{
-            delay: 0.4,
-          }}
-          className="mt-8 text-center"
-        >
+        <div className="mt-8 text-center">
 
           <p className="text-zinc-500">
 
@@ -391,7 +326,7 @@ export default function AuthPage() {
 
           </p>
 
-        </motion.div>
+        </div>
 
       </motion.div>
 
