@@ -135,12 +135,135 @@ export default function CreatorsPage() {
     }
   };
 
+  // APPROVED ONLY FOR TOP STATS
+  const approvedOnly = clips.filter(
+    (clip) => clip.status === "approved"
+  );
+
+  const totalViews = approvedOnly.reduce(
+    (sum, clip) => sum + (clip.views || 0),
+    0
+  );
+
+  const totalEarnings = approvedOnly.reduce(
+    (sum, clip) =>
+      sum +
+      ((Math.min(clip.views || 0, 300000) /
+        1000) *
+        0.3),
+    0
+  );
+
+  // SECTIONS
+  const pendingClips = clips.filter(
+    (clip) => clip.status === "pending"
+  );
+
+  const approvedClips = clips.filter(
+    (clip) => clip.status === "approved"
+  );
+
+  const rejectedClips = clips.filter(
+    (clip) => clip.status === "rejected"
+  );
+
+  // CARD
+  const renderClipCard = (
+    clip,
+    index
+  ) => {
+
+    const cappedViews = Math.min(
+      clip.views || 0,
+      300000
+    );
+
+    const earnings =
+      (cappedViews / 1000) * 0.3;
+
+    return (
+      <motion.div
+        key={clip.id}
+        initial={{
+          opacity: 0,
+          y: 20,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          delay: index * 0.05,
+        }}
+        className="bg-white/[0.03] border border-white/10 rounded-3xl p-6"
+      >
+
+        <div className="flex items-center gap-3 mb-5">
+
+          <span className="bg-orange-500/20 text-orange-400 px-4 py-1 rounded-full text-sm uppercase font-semibold">
+            {clip.platform}
+          </span>
+
+          <span
+            className={`px-4 py-1 rounded-full text-sm capitalize font-semibold ${statusStyle(
+              clip.status
+            )}`}
+          >
+            {clip.status}
+          </span>
+
+        </div>
+
+        <a
+          href={clip.link}
+          target="_blank"
+          className="break-all text-zinc-300 hover:text-orange-400 block mb-5"
+        >
+          {clip.link}
+        </a>
+
+        <div className="flex flex-wrap gap-3">
+
+          <div className="bg-white/5 border border-white/10 px-5 py-3 rounded-2xl min-w-[140px]">
+
+            <p className="text-xs text-zinc-500 mb-1">
+              Views
+            </p>
+
+            <p className="font-black text-2xl text-white">
+              {(clip.views || 0).toLocaleString()}
+            </p>
+
+          </div>
+
+          <div className="bg-white/5 border border-white/10 px-5 py-3 rounded-2xl min-w-[140px]">
+
+            <p className="text-xs text-zinc-500 mb-1">
+              Earnings
+            </p>
+
+            <p className="font-black text-2xl text-green-400">
+              ${earnings.toFixed(2)}
+            </p>
+
+          </div>
+
+        </div>
+
+      </motion.div>
+    );
+  };
+
   return (
     <main className="min-h-screen bg-black text-white overflow-hidden relative">
+
+      {/* BG */}
 
       <div className="absolute top-[-250px] left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-orange-500/10 blur-[140px] rounded-full pointer-events-none" />
 
       <Navbar />
+
+      {/* TOAST */}
 
       <AnimatePresence>
         {message && (
@@ -168,7 +291,10 @@ export default function CreatorsPage() {
 
       <div className="relative z-10 max-w-5xl mx-auto px-6 py-20">
 
+        {/* HEADER */}
+
         <div className="mb-14">
+
           <h1 className="text-5xl lg:text-6xl font-black mb-4">
             Creator Dashboard
           </h1>
@@ -176,21 +302,54 @@ export default function CreatorsPage() {
           <p className="text-zinc-400 text-lg">
             Submit and manage your clips.
           </p>
+
+        </div>
+
+        {/* TOP STATS */}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10">
+
+          <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6">
+
+            <p className="text-zinc-500 text-sm mb-2">
+              Approved Views
+            </p>
+
+            <h2 className="text-5xl font-black text-orange-400">
+              {totalViews.toLocaleString()}
+            </h2>
+
+          </div>
+
+          <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6">
+
+            <p className="text-zinc-500 text-sm mb-2">
+              Approved Earnings
+            </p>
+
+            <h2 className="text-5xl font-black text-green-400">
+              ${totalEarnings.toFixed(2)}
+            </h2>
+
+          </div>
+
         </div>
 
         {/* DISCORD BUTTON */}
 
         <div className="mb-10">
+
           <a
             href="https://discord.gg/XePVKRtf5"
             target="_blank"
-            className="inline-block bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-4 rounded-2xl font-bold text-lg hover:scale-105 transition-all duration-300"
+            className="inline-block bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-4 rounded-2xl font-bold text-lg"
           >
-            Open Discord Payout Ticket
+            Open Discord Ticket
           </a>
+
         </div>
 
-        {/* SUBMIT FORM */}
+        {/* FORM */}
 
         <form
           onSubmit={handleSubmit}
@@ -286,114 +445,66 @@ export default function CreatorsPage() {
 
         </form>
 
-        {/* CLIPS */}
+        {/* PENDING */}
 
-        <div className="mt-16">
+        <div className="mt-20 mb-16">
 
-          <div className="flex items-center justify-between mb-8">
-
-            <h2 className="text-3xl font-black">
-              Submitted Clips
-            </h2>
-
-            <div className="bg-orange-500/10 border border-orange-500/20 px-4 py-2 rounded-2xl text-orange-400 font-semibold">
-              {clips.length} Clips
-            </div>
-
-          </div>
+          <h2 className="text-3xl font-black mb-6 text-yellow-400">
+            Pending Clips
+          </h2>
 
           <div className="space-y-5">
 
-            {clips.length === 0 ? (
+            {pendingClips.length === 0 ? (
               <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-10 text-center text-zinc-500">
-                No clips submitted yet.
+                No pending clips.
               </div>
             ) : (
-              clips.map((clip, index) => {
+              pendingClips.map(renderClipCard)
+            )}
 
-                const cappedViews = Math.min(
-                  clip.views || 0,
-                  300000
-                );
+          </div>
 
-                // MONEY ALWAYS VISIBLE
-                const earnings =
-                  (cappedViews / 1000) * 0.3;
+        </div>
 
-                return (
-                  <motion.div
-                    key={clip.id}
-                    initial={{
-                      opacity: 0,
-                      y: 20,
-                    }}
-                    animate={{
-                      opacity: 1,
-                      y: 0,
-                    }}
-                    transition={{
-                      delay: index * 0.05,
-                    }}
-                    className="bg-white/[0.03] border border-white/10 rounded-3xl p-6"
-                  >
+        {/* APPROVED */}
 
-                    <div className="flex items-center gap-3 mb-5">
+        <div className="mb-16">
 
-                      <span className="bg-orange-500/20 text-orange-400 px-4 py-1 rounded-full text-sm uppercase font-semibold">
-                        {clip.platform}
-                      </span>
+          <h2 className="text-3xl font-black mb-6 text-green-400">
+            Approved Clips
+          </h2>
 
-                      <span
-                        className={`px-4 py-1 rounded-full text-sm capitalize font-semibold ${statusStyle(
-                          clip.status
-                        )}`}
-                      >
-                        {clip.status}
-                      </span>
+          <div className="space-y-5">
 
-                    </div>
+            {approvedClips.length === 0 ? (
+              <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-10 text-center text-zinc-500">
+                No approved clips.
+              </div>
+            ) : (
+              approvedClips.map(renderClipCard)
+            )}
 
-                    <a
-                      href={clip.link}
-                      target="_blank"
-                      className="break-all text-zinc-300 hover:text-orange-400 block mb-5"
-                    >
-                      {clip.link}
-                    </a>
+          </div>
 
-                    {/* VIEWS + MONEY */}
+        </div>
 
-                    <div className="flex flex-wrap gap-3">
+        {/* REJECTED */}
 
-                      <div className="bg-white/5 border border-white/10 px-5 py-3 rounded-2xl min-w-[140px]">
+        <div>
 
-                        <p className="text-xs text-zinc-500 mb-1">
-                          Views
-                        </p>
+          <h2 className="text-3xl font-black mb-6 text-red-400">
+            Rejected Clips
+          </h2>
 
-                        <p className="font-black text-2xl text-white">
-                          {(clip.views || 0).toLocaleString()}
-                        </p>
+          <div className="space-y-5">
 
-                      </div>
-
-                      <div className="bg-white/5 border border-white/10 px-5 py-3 rounded-2xl min-w-[140px]">
-
-                        <p className="text-xs text-zinc-500 mb-1">
-                          Estimated Earnings
-                        </p>
-
-                        <p className="font-black text-2xl text-green-400">
-                          ${earnings.toFixed(2)}
-                        </p>
-
-                      </div>
-
-                    </div>
-
-                  </motion.div>
-                );
-              })
+            {rejectedClips.length === 0 ? (
+              <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-10 text-center text-zinc-500">
+                No rejected clips.
+              </div>
+            ) : (
+              rejectedClips.map(renderClipCard)
             )}
 
           </div>
