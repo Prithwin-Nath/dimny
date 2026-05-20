@@ -16,7 +16,6 @@ export default function AdminPage() {
 
   const ADMIN_PASSWORD = "richu2105";
 
-  // MESSAGE
   const showMessage = (text) => {
     setMessage(text);
 
@@ -25,7 +24,6 @@ export default function AdminPage() {
     }, 3000);
   };
 
-  // LOGIN
   const checkPassword = async () => {
     if (password === ADMIN_PASSWORD) {
       setAuthorized(true);
@@ -37,7 +35,6 @@ export default function AdminPage() {
     }
   };
 
-  // FETCH CLIPS
   const fetchClips = async () => {
     setLoading(true);
 
@@ -53,7 +50,6 @@ export default function AdminPage() {
     setLoading(false);
   };
 
-  // FETCH PAYOUTS
   const fetchPayouts = async () => {
     const { data, error } = await supabase
       .from("payout_requests")
@@ -66,27 +62,49 @@ export default function AdminPage() {
   };
 
   // UPDATE PAYOUT STATUS
-  const updatePayoutStatus = async (id, status) => {
+  const updatePayoutStatus = async (
+    payout,
+    status
+  ) => {
     const { error } = await supabase
       .from("payout_requests")
       .update({ status })
-      .eq("id", id);
+      .eq("id", payout.id);
 
     if (!error) {
-      setPayouts((prev) =>
-        prev.map((payout) =>
-          payout.id === id
-            ? { ...payout, status }
-            : payout
-        )
-      );
+
+      // IF PAID -> RESET CLIP VIEWS
+      if (status === "paid") {
+
+        const userClips = clips.filter(
+          (clip) =>
+            clip.user_email === payout.user_email &&
+            clip.status === "approved"
+        );
+
+        for (const clip of userClips) {
+          await supabase
+            .from("clips")
+            .update({
+              views: 0,
+            })
+            .eq("id", clip.id);
+        }
+
+        fetchClips();
+      }
+
+      fetchPayouts();
 
       showMessage(`✅ Payout ${status}`);
     }
   };
 
-  // UPDATE STATUS
-  const updateStatus = async (id, status) => {
+  // UPDATE CLIP STATUS
+  const updateStatus = async (
+    id,
+    status
+  ) => {
     const { error } = await supabase
       .from("clips")
       .update({ status })
@@ -106,7 +124,10 @@ export default function AdminPage() {
   };
 
   // UPDATE VIEWS
-  const updateViews = async (id, views) => {
+  const updateViews = async (
+    id,
+    views
+  ) => {
     const { error } = await supabase
       .from("clips")
       .update({ views })
@@ -125,7 +146,7 @@ export default function AdminPage() {
     }
   };
 
-  // DELETE
+  // DELETE CLIP
   const deleteClip = async (id) => {
     const { error } = await supabase
       .from("clips")
@@ -134,28 +155,15 @@ export default function AdminPage() {
 
     if (!error) {
       setClips((prev) =>
-        prev.filter((clip) => clip.id !== id)
+        prev.filter(
+          (clip) => clip.id !== id
+        )
       );
 
       showMessage("🗑 Clip deleted.");
     }
   };
 
-  // STATUS STYLE
-  const statusStyle = (status) => {
-    switch (status) {
-      case "approved":
-        return "bg-green-500/20 text-green-400 border border-green-500/20";
-
-      case "rejected":
-        return "bg-red-500/20 text-red-400 border border-red-500/20";
-
-      default:
-        return "bg-yellow-500/20 text-yellow-300 border border-yellow-500/20";
-    }
-  };
-
-  // STATS
   const total = clips.length;
 
   const pending = clips.filter(
@@ -182,7 +190,6 @@ export default function AdminPage() {
     0
   );
 
-  // LOGIN SCREEN
   if (!authorized) {
     return (
       <main className="min-h-screen bg-black text-white flex items-center justify-center px-6">
@@ -223,6 +230,12 @@ export default function AdminPage() {
 
   return (
     <main className="min-h-screen bg-black text-white px-6 py-12">
+
+      {message && (
+        <div className="fixed top-5 right-5 bg-zinc-900 border border-white/10 px-6 py-4 rounded-2xl z-50">
+          {message}
+        </div>
+      )}
 
       <h1 className="text-6xl font-black mb-10">
         Admin Dashboard
@@ -291,27 +304,35 @@ export default function AdminPage() {
             >
 
               <p className="text-orange-400 font-bold mb-2">
+                @{payout.username}
+              </p>
+
+              <p className="text-zinc-400 mb-2">
                 {payout.user_email}
               </p>
 
-              <p className="text-5xl font-black mb-4">
+              <p className="text-5xl font-black mb-4 text-green-400">
                 ${payout.amount}
               </p>
 
-              <p className="text-zinc-500 mb-6">
-                {payout.status}
+              <p className="text-zinc-500 mb-6 capitalize">
+                Status: {payout.status}
               </p>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-wrap">
 
                 <button
                   onClick={() =>
                     updatePayoutStatus(
-                      payout.id,
+                      payout,
                       "approved"
                     )
                   }
-                  className="bg-green-500/20 text-green-400 px-5 py-3 rounded-2xl"
+                  className={`px-5 py-3 rounded-2xl font-semibold ${
+                    payout.status === "approved"
+                      ? "bg-green-500 text-white"
+                      : "bg-green-500/20 text-green-400"
+                  }`}
                 >
                   Approve
                 </button>
@@ -319,13 +340,33 @@ export default function AdminPage() {
                 <button
                   onClick={() =>
                     updatePayoutStatus(
-                      payout.id,
+                      payout,
                       "rejected"
                     )
                   }
-                  className="bg-red-500/20 text-red-400 px-5 py-3 rounded-2xl"
+                  className={`px-5 py-3 rounded-2xl font-semibold ${
+                    payout.status === "rejected"
+                      ? "bg-red-500 text-white"
+                      : "bg-red-500/20 text-red-400"
+                  }`}
                 >
                   Reject
+                </button>
+
+                <button
+                  onClick={() =>
+                    updatePayoutStatus(
+                      payout,
+                      "paid"
+                    )
+                  }
+                  className={`px-5 py-3 rounded-2xl font-semibold ${
+                    payout.status === "paid"
+                      ? "bg-blue-500 text-white"
+                      : "bg-blue-500/20 text-blue-400"
+                  }`}
+                >
+                  Mark Paid
                 </button>
 
               </div>
@@ -348,7 +389,9 @@ export default function AdminPage() {
           );
 
           const earnings =
-            (payableViews / 1000) * 0.3;
+            clip.status === "approved"
+              ? (payableViews / 1000) * 0.3
+              : 0;
 
           return (
             <div
@@ -400,16 +443,6 @@ export default function AdminPage() {
 
                   <div className="bg-black/40 p-4 rounded-2xl">
                     <p className="text-zinc-500 text-xs">
-                      Payable Views
-                    </p>
-
-                    <p className="font-bold text-orange-400">
-                      {payableViews.toLocaleString()}
-                    </p>
-                  </div>
-
-                  <div className="bg-black/40 p-4 rounded-2xl">
-                    <p className="text-zinc-500 text-xs">
                       Earnings
                     </p>
 
@@ -429,7 +462,11 @@ export default function AdminPage() {
                         "approved"
                       )
                     }
-                    className="bg-green-500/20 text-green-400 px-5 py-3 rounded-2xl"
+                    className={`px-5 py-3 rounded-2xl font-semibold ${
+                      clip.status === "approved"
+                        ? "bg-green-500 text-white"
+                        : "bg-green-500/20 text-green-400"
+                    }`}
                   >
                     Approve
                   </button>
@@ -441,7 +478,11 @@ export default function AdminPage() {
                         "rejected"
                       )
                     }
-                    className="bg-red-500/20 text-red-400 px-5 py-3 rounded-2xl"
+                    className={`px-5 py-3 rounded-2xl font-semibold ${
+                      clip.status === "rejected"
+                        ? "bg-red-500 text-white"
+                        : "bg-red-500/20 text-red-400"
+                    }`}
                   >
                     Reject
                   </button>

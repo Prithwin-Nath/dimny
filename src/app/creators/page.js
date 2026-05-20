@@ -122,7 +122,6 @@ export default function CreatorsPage() {
 
     if (!user) return;
 
-    // CHECK EXISTING PENDING REQUEST
     const { data: existingRequest } = await supabase
       .from("payout_requests")
       .select("*")
@@ -139,7 +138,6 @@ export default function CreatorsPage() {
       return;
     }
 
-    // ONLY APPROVED CLIPS
     const approvedClips = clips.filter(
       (clip) => clip.status === "approved"
     );
@@ -173,7 +171,11 @@ export default function CreatorsPage() {
       ]);
 
     if (!error) {
-      showMessage("✅ Payout requested!");
+      showMessage(
+        `✅ Payout request sent for $${payoutAmount.toFixed(
+          2
+        )}`
+      );
     } else {
       console.log(error);
       showMessage(
@@ -278,7 +280,7 @@ export default function CreatorsPage() {
 
           <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6">
             <p className="text-zinc-500 text-sm mb-2">
-              Available Earnings
+              Available Balance
             </p>
 
             <h2 className="text-5xl font-black text-green-400">
@@ -291,7 +293,7 @@ export default function CreatorsPage() {
         <div className="mb-10">
           <button
             onClick={requestPayout}
-            className="bg-gradient-to-r from-green-400 to-green-600 px-8 py-4 rounded-2xl font-bold text-lg"
+            className="bg-gradient-to-r from-green-400 to-green-600 px-8 py-4 rounded-2xl font-bold text-lg hover:scale-105 transition"
           >
             Request Payout
           </button>
@@ -419,10 +421,9 @@ export default function CreatorsPage() {
                   300000
                 );
 
+                // SHOW MONEY FOR ALL CLIPS
                 const earnings =
-                  clip.status === "approved"
-                    ? (cappedViews / 1000) * 0.3
-                    : 0;
+                  (cappedViews / 1000) * 0.3;
 
                 return (
                   <motion.div
