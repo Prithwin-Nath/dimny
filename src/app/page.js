@@ -72,7 +72,7 @@ export default function HomePage() {
             </Link>
 
             <a
-              href="https://discord.gg/HDpkRstBG"
+              href="https://discord.gg/wquj4echWZ"
               target="_blank"
               className="inline-flex items-center justify-center bg-gradient-to-r from-purple-500 to-purple-700 px-8 py-4 rounded-2xl text-lg font-bold hover:scale-105 active:scale-100 transition-all duration-300 shadow-2xl shadow-purple-500/20"
             >

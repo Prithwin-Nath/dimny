@@ -266,7 +266,7 @@ export default function CreatorsPage() {
         <div className="mb-10">
 
           <a
-            href="https://discord.gg/XePVKRtf5"
+            href="https://discord.gg/wquj4echWZ"
             target="_blank"
             className="bg-gradient-to-r from-green-400 to-green-600 px-8 py-4 rounded-2xl font-bold text-lg shadow-xl inline-block"
           >
