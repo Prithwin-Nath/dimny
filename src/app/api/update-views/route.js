@@ -1,19 +1,22 @@
-import { supabase } from "@/lib/supabase";
+import { NextResponse } from "next/server";
+import { supabase } from "../../../lib/supabase";
+
+const API_KEY = process.env.YOUTUBE_API_KEY;
 
 export async function GET() {
 
   try {
 
-    const { data: clips, error } =
-      await supabase
-        .from("clips")
-        .select("*");
+    const { data: clips, error } = await supabase
+      .from("clips")
+      .select("*")
+      .eq("platform", "youtube");
 
     if (error) {
 
-      return Response.json({
+      return NextResponse.json({
         success: false,
-        error: error.message,
+        error,
       });
     }
 
@@ -21,41 +24,67 @@ export async function GET() {
 
     for (const clip of clips) {
 
-      const currentViews =
-        clip.views || 0;
+      try {
 
-      // RANDOM GROWTH
-      const randomViews =
-        Math.floor(
-          Math.random() * 5000
-        ) + 1000;
+        let videoId = "";
 
-      const newViews =
-        currentViews + randomViews;
+        // SHORTS
+        if (clip.link.includes("/shorts/")) {
 
-      const { error: updateError } =
+          videoId =
+            clip.link
+              .split("/shorts/")[1]
+              ?.split("?")[0];
+
+        }
+
+        // NORMAL YOUTUBE LINK
+        else if (clip.link.includes("v=")) {
+
+          videoId =
+            clip.link
+              .split("v=")[1]
+              ?.split("&")[0];
+        }
+
+        if (!videoId) continue;
+
+        const response = await fetch(
+          `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}&key=${API_KEY}`
+        );
+
+        const data = await response.json();
+
+        const views =
+          data?.items?.[0]?.statistics?.viewCount;
+
+        if (!views) continue;
+
         await supabase
           .from("clips")
           .update({
-            views: newViews,
+            views: Number(views),
           })
           .eq("id", clip.id);
 
-      if (!updateError) {
         updated++;
+
+      } catch (err) {
+
+        console.log(err);
       }
     }
 
-    return Response.json({
+    return NextResponse.json({
       success: true,
       updated,
     });
 
-  } catch (err) {
+  } catch (error) {
 
-    return Response.json({
+    return NextResponse.json({
       success: false,
-      error: err.message,
+      error,
     });
   }
 }
