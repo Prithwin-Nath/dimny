@@ -27,7 +27,7 @@ export default function HomePage() {
 
       <Navbar />
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-12 py-32 relative z-10">
+      <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-12 py-20 sm:py-32 relative z-10">
 
         {/* HERO */}
         <motion.div
@@ -46,17 +46,17 @@ export default function HomePage() {
           className="text-center"
         >
 
-          <p className="text-orange-400 font-semibold tracking-widest uppercase mb-6">
+          <p className="text-orange-400 font-semibold tracking-[0.25em] uppercase mb-5 text-sm sm:text-base">
             DIMNY CREATOR PROGRAM
           </p>
 
-          <h1 className="text-7xl lg:text-8xl font-black leading-none mb-8">
+          <h1 className="text-5xl sm:text-6xl lg:text-8xl font-black leading-[0.95] mb-6 sm:mb-8">
             Start Clipping
             <br />
             Earn Money
           </h1>
 
-          <p className="text-zinc-400 text-xl max-w-2xl mx-auto leading-relaxed mb-12">
+          <p className="text-zinc-400 text-base sm:text-xl max-w-2xl mx-auto leading-relaxed mb-10 sm:mb-12 px-2">
             Submit viral clips, grow with creators,
             and get rewarded through DIMNY.
           </p>
@@ -66,7 +66,7 @@ export default function HomePage() {
 
             <Link
               href="/apply"
-              className="inline-flex items-center justify-center bg-gradient-to-r from-orange-400 to-orange-600 px-8 py-4 rounded-2xl text-lg font-bold hover:scale-105 active:scale-100 transition-all duration-300 shadow-2xl shadow-orange-500/20"
+              className="w-full sm:w-auto inline-flex items-center justify-center bg-gradient-to-r from-orange-400 to-orange-600 px-8 py-4 rounded-2xl text-base sm:text-lg font-bold hover:scale-105 active:scale-100 transition-all duration-300 shadow-2xl shadow-orange-500/20 min-w-[230px]"
             >
               Start Clipping
             </Link>
@@ -74,7 +74,7 @@ export default function HomePage() {
             <a
               href="https://discord.gg/wquj4echWZ"
               target="_blank"
-              className="inline-flex items-center justify-center bg-gradient-to-r from-purple-500 to-purple-700 px-8 py-4 rounded-2xl text-lg font-bold hover:scale-105 active:scale-100 transition-all duration-300 shadow-2xl shadow-purple-500/20"
+              className="w-full sm:w-auto inline-flex items-center justify-center bg-gradient-to-r from-purple-500 to-purple-700 px-8 py-4 rounded-2xl text-base sm:text-lg font-bold hover:scale-105 active:scale-100 transition-all duration-300 shadow-2xl shadow-purple-500/20 min-w-[230px]"
             >
               Join Discord
             </a>
@@ -84,7 +84,7 @@ export default function HomePage() {
         </motion.div>
 
         {/* FEATURES */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-24">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 mt-20 sm:mt-24">
 
           {/* CARD 1 */}
           <motion.div
@@ -99,7 +99,7 @@ export default function HomePage() {
             transition={{
               delay: 0.2,
             }}
-            className="bg-white/[0.03] border border-white/10 rounded-3xl p-8 hover:bg-white/[0.05] hover:-translate-y-1 transition-all duration-300"
+            className="bg-white/[0.03] border border-white/10 rounded-3xl p-6 sm:p-8 hover:bg-white/[0.05] hover:-translate-y-1 transition-all duration-300"
           >
 
             <div className="text-4xl mb-5">
@@ -110,7 +110,7 @@ export default function HomePage() {
               Submit Clips
             </h2>
 
-            <p className="text-zinc-400 leading-relaxed">
+            <p className="text-zinc-400 leading-relaxed text-sm sm:text-base">
               Upload your best clips from
               YouTube, TikTok, or Instagram.
             </p>
@@ -130,7 +130,7 @@ export default function HomePage() {
             transition={{
               delay: 0.3,
             }}
-            className="bg-white/[0.03] border border-white/10 rounded-3xl p-8 hover:bg-white/[0.05] hover:-translate-y-1 transition-all duration-300"
+            className="bg-white/[0.03] border border-white/10 rounded-3xl p-6 sm:p-8 hover:bg-white/[0.05] hover:-translate-y-1 transition-all duration-300"
           >
 
             <div className="text-4xl mb-5">
@@ -141,7 +141,7 @@ export default function HomePage() {
               Fast Reviews
             </h2>
 
-            <p className="text-zinc-400 leading-relaxed">
+            <p className="text-zinc-400 leading-relaxed text-sm sm:text-base">
               DIMNY admins review and approve
               clips quickly and smoothly.
             </p>
@@ -161,7 +161,7 @@ export default function HomePage() {
             transition={{
               delay: 0.4,
             }}
-            className="bg-white/[0.03] border border-white/10 rounded-3xl p-8 hover:bg-white/[0.05] hover:-translate-y-1 transition-all duration-300"
+            className="bg-white/[0.03] border border-white/10 rounded-3xl p-6 sm:p-8 hover:bg-white/[0.05] hover:-translate-y-1 transition-all duration-300"
           >
 
             <div className="text-4xl mb-5">
@@ -172,7 +172,7 @@ export default function HomePage() {
               Get Paid
             </h2>
 
-            <p className="text-zinc-400 leading-relaxed">
+            <p className="text-zinc-400 leading-relaxed text-sm sm:text-base">
               Earn money based on approved
               clips and overall performance.
             </p>
